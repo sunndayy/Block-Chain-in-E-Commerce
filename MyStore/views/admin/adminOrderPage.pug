@@ -1,0 +1,33 @@
+include ../layout/headerAdmin.pug
+.container-fluid
+  .row.row-offcanvas.row-offcanvas-right
+    .col-xs-12.col-sm-10.col-sm-push-2
+      section.group_cat_home
+        .container-fluid
+          .row
+            .group_title_1
+              .row
+                .col-md-4.col-sm-4.col-xs-12
+                  h3.name-group
+                    a.title-name-group(href='#' style='pointer-events: none;') Quản lý đơn hàng
+            ul.list-group.history-list-group.admin_list_order
+              include orders.pug
+            if (!updateOrderID)
+              .clearfix
+              .viewmore-section
+                a.view_more(href='#view_more_order')
+                  span
+                    | Xem th&ecirc;m đơn hàng 
+                    i.fa.fa-angle-double-right
+                ul#view_more_order.pagination.pagination-lg.my-pagination.hide
+                  each page_number in page_numbers
+                    if (page_number.isCurPage)
+                      li
+                        a.admin_order_page_number.admin_active_order_page(href='/admin/adminOrderPage/?page=' + page_number.value)
+                          span= page_number.value
+                    else
+                      li
+                        a.admin_order_page_number(href='/admin/adminOrderPage/?page=' + page_number.value)
+                          span= page_number.value
+    include ../layout/sidebarAdmin.pug
+script(type='text/javascript' src='/js/app.js')
