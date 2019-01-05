@@ -1,0 +1,9 @@
+{
+  "name": "core-block-chain",
+  "version": "0.0.0",
+  "description": "CoreBlockChain",
+  "main": "app.js",
+  "author": {
+    "name": ""
+  }
+}
