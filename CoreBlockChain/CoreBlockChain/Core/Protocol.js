@@ -144,19 +144,20 @@ class Node {
 			}
 			case HEADER: {
 				var preBlockHeader = null;
-				if (message.blockHeader.index == myBlockChain.GetLength() + 1) {
+				var blockHeader = message.blockHeader;
+				if (blockHeader.index == myBlockChain.GetLength() + 1) {
 					preBlockHeader = tmpBlocks.find(block => {
-						return Crypto.Sha256(JSON.stringify(block.blockHeader)) == message.blockHeader.preBlockHash;
+						return Crypto.Sha256(JSON.stringify(block.blockHeader)) == blockHeader.preBlockHash;
 					});
-				} else if (message.blockHeader.index == myBlockChain.GetLength()) {
+				} else if (blockHeader.index == myBlockChain.GetLength()) {
 					preBlockHeader = myBlockChain.headers[myBlockChain.GetLength() - 1];
 				}
 				if (preBlockHeader) {
-					if (myBlockChain.ValidateBlockHeader(message.blockHeader, preBlockHeader)) {
-						tmpHeaders.push(new BlockHeader(message.blockHeader));
+					if (myBlockChain.ValidateBlockHeader(blockHeader, preBlockHeader)) {
+						tmpHeaders.push(blockHeader);
 						this.Write({
 							header: GET_DATA,
-							blockHeaderHash: Crypto.Sha256(JSON.stringify(message.blockHeader))
+							blockHeaderHash: Crypto.Sha256(JSON.stringify(blockHeader))
 						});
 					}
 				}
