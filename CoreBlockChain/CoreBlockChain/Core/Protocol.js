@@ -186,8 +186,8 @@ class Node {
 				var blockHeader = tmpHeaders.find(blockHeader => {
 					return Crypto.Sha256(JSON.stringify(blockHeader)) == message.blockHeaderHash;
 				});
-				var blockData = new BlockData(message.blockData);
 				if (blockHeader) {
+					var blockData = new BlockData(message.blockData);
 					if (myBlockChain.ValidateBlockData(blockData, blockHeader)) {
 						tmpHeaders.splice(tmpHeaders.indexOf(blockHeader), 1);
 						var newBlock = {
