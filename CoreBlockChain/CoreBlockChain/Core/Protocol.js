@@ -44,26 +44,26 @@ function Connect(url) {
 }
 
 function CollectNewBlock() {
-	var nextBlockData = new BlockData(txPool.slice(0, Const.nTx));
-	nextBlockData.AddCreatorReWard(myPubKeyHash);
-	var nextBlockHeader = new BlockHeader({
+	var newBlockData = new BlockData(txPool.slice(0, Const.nTx));
+	newBlockData.AddCreatorReWard(myPubKeyHash);
+	var newBlockHeader = new BlockHeader({
 		index: nextBlock.blockHeader.index + 1,
 		preBlockHash: Crypto.Sha256(JSON.stringify(nextBlock.blockHeader)),
-		merkleRoot: nextBlockData.MerkleRoot(),
+		merkleRoot: newBlockData.MerkleRoot(),
 		validatorSigns: []
 	});
 	unCompletedBlock = {
-		blockHeader: nextBlockHeader,
-		blockData: nextBlockData
+		blockHeader: newBlockHeader,
+		blockData: newBlockData
 	};
 	myBlockChain.GetTopWallets().forEach(pubKeyHash => {
 		var node = nodes[pubKeyHash];
 		if (node) {
 			node.Write({
 				header: NEED_VALIDATING,
-				index: nextBlockHeader.index,
-				preBlockHash: nextBlockHeader.preBlockHash,
-				merkleRoot: nextBlockHeader.merkleRoot
+				index: newBlockHeader.index,
+				preBlockHash: newBlockHeader.preBlockHash,
+				merkleRoot: newBlockHeader.merkleRoot
 			});
 		}
 	});
