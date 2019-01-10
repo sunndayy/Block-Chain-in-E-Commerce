@@ -43,37 +43,38 @@ function Connect(url) {
 	// Gui goi tin version
 }
 
+function CollectNewBlock() {
+	var nextBlockData = new BlockData(txPool.slice(0, Const.nTx));
+	nextBlockData.AddCreatorReWard(myPubKeyHash);
+	var nextBlockHeader = new BlockHeader({
+		index: nextBlock.blockHeader.index + 1,
+		preBlockHash: Crypto.Sha256(JSON.stringify(nextBlock.blockHeader)),
+		merkleRoot: nextBlockData.MerkleRoot(),
+		validatorSigns: []
+	});
+	unCompletedBlock = {
+		blockHeader: nextBlockHeader,
+		blockData: nextBlockData
+	};
+	myBlockChain.GetTopWallets().forEach(pubKeyHash => {
+		var node = nodes[pubKeyHash];
+		if (node) {
+			node.Write({
+				header: NEED_VALIDATING,
+				index: nextBlockHeader.index,
+				preBlockHash: nextBlockHeader.preBlockHash,
+				merkleRoot: nextBlockHeader.merkleRoot
+			});
+		}
+	});
+}
+
 class Node {
 	constructor(connection) {
 		this.connection = connection;
 	}
 	Write(message) {
 
-	}
-	CollectNewBlock() {
-		var nextBlockData = new BlockData(txPool.slice(0, Const.nTx));
-		nextBlockData.AddCreatorReWard(myPubKeyHash);
-		var nextBlockHeader = new BlockHeader({
-			index: nextBlock.blockHeader.index + 1,
-			preBlockHash: Crypto.Sha256(JSON.stringify(nextBlock.blockHeader)),
-			merkleRoot: nextBlockData.MerkleRoot(),
-			validatorSigns: []
-		});
-		unCompletedBlock = {
-			blockHeader: nextBlockHeader,
-			blockData: nextBlockData
-		};
-		myBlockChain.GetTopWallets().forEach(pubKeyHash => {
-			var node = nodes[pubKeyHash];
-			if (node) {
-				node.Write({
-					header: NEED_VALIDATING,
-					index: nextBlockHeader.index,
-					preBlockHash: nextBlockHeader.preBlockHash,
-					merkleRoot: nextBlockHeader.merkleRoot
-				});
-			}
-		});
 	}
 	HandleMessage(message) {
 		switch (message.header) {
@@ -245,7 +246,7 @@ class Node {
 									if (!myBlockChain.IsOnTop(myPubKeyHash)) {
 										timeout2 = setTimeout(() => {
 											if (txPool.length >= Const.nTx) {
-												this.CollectNewBlock();
+												CollectNewBlock();
 											}
 										}, myBlockChain.GetTimeMustWait(myPubKeyHash));
 									}
@@ -280,7 +281,7 @@ class Node {
 				if (myBlockChain.ValidateTransaction(transaction)) {
 					txPool.push(transaction);
 					if (state == 1 && myBlockChain.GetTimeMustWait(myPubKeyHash) == 0 && txPool.length == Const.nTx) {
-						this.CollectNewBlock();
+						CollectNewBlock();
 					}
 				}
 				break;
