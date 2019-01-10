@@ -270,6 +270,7 @@ class Node {
 			case GET_UNSPENTOUTPUTS: {
 				this.Write({
 					header: UNSPENTOUTPUTS,
+					pubKeyHash: message.pubKeyHash,
 					unSpentOutputs: myBlockChain.GetUnSpentOutputs(message.pubKeyHash)
 				})
 				break;
