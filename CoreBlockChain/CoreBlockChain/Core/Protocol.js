@@ -1,4 +1,5 @@
-﻿const GET_ADDRS = "get_addrs";
+﻿// Message header
+const GET_ADDRS = "get_addrs";
 const ADDRS = "addrs";
 const VERSION = "version";
 const VERACK = "verack";
@@ -13,22 +14,35 @@ const NEED_VALIDATING = "need_validating";
 const VALIDATION_RESULT = "validate_result";
 const FOLLOW = "follow";
 const RECENT_TX = "recent_tx";
-const Const = require("./Const");
+const ERROR = "error";
+// Module
 const Crypto = require("./Crypto");
-const BlockChain = require("./Core");
+const Const = require("./Const");
+const Transaction = require("./Core").Transaction;
+const BlockHeader = require("./Core").BlockHeader;
+const BlockData = require("./Core").BlockData;
+const BlockChain = require("./Core").BlockChain;
+// My info
+var myPrivKey = null;
+var myPubKeyHash = null;
+var myUrl = null;
+// State variable
 const trustedPeers = [];
-var myUrl, myPrivKey, myPubKeyHash;
+var nodes = {};
 var myBlockChain = new BlockChain();
-var nodes = {}; // dictionary có key là pubKeyHash, value là node
-var tmpHeaders = [];
-var tmpBlocks = [];
+var tmpBlocks = []; // Đọc từ file json lên
+var nextBlock = tmpBlocks[0];
 var state = 1;
+var tmpHeaders = [];
 var txPool = [];
-var nextBlock = null;
-var newBlock = null;
-function Connect(url) {
+var timeout1 = null;
+var timeout2 = null;
+var unCompletedBlock = null;
 
+function Connect(url) {
+	// Gui goi tin version
 }
+
 class Node {
 	constructor(connection) {
 		this.connection = connection;
@@ -36,12 +50,36 @@ class Node {
 	Write(message) {
 
 	}
+	CollectNewBlock() {
+		var nextBlockData = new BlockData(txPool.slice(0, Const.nTx));
+		nextBlockData.AddCreatorReWard(myPubKeyHash);
+		var nextBlockHeader = new BlockHeader({
+			index: nextBlock.blockHeader.index + 1,
+			preBlockHash: Crypto.Sha256(JSON.stringify(nextBlock.blockHeader)),
+			merkleRoot: nextBlockData.MerkleRoot(),
+			validatorSigns: []
+		});
+		unCompletedBlock = {
+			blockHeader: nextBlockHeader,
+			blockData: nextBlockData
+		};
+		myBlockChain.GetTopWallets().forEach(pubKeyHash => {
+			var node = nodes[pubKeyHash];
+			if (node) {
+				node.Write({
+					header: NEED_VALIDATING,
+					index: nextBlockHeader.index,
+					preBlockHash: nextBlockHeader.preBlockHash,
+					merkleRoot: nextBlockHeader.merkleRoot
+				});
+			}
+		});
+	}
 	HandleMessage(message) {
 		switch (message.header) {
 			case GET_ADDRS: {
-				// Trả về url của các node đang kết nối từ nodes dictionary
 				var allNodes = Object.values(nodes);
-				var allUrls = allNodes.map((node) => {
+				var allUrls = allNodes.map(node => {
 					return node.url;
 				});
 				this.Write({
@@ -51,9 +89,8 @@ class Node {
 				break;
 			}
 			case ADDRS: {
-				// Gửi gói tin VERSION đến các url
 				var allNodes = Object.values(nodes);
-				var allUrls = allNodes.map((node) => {
+				var allUrls = allNodes.map(node => {
 					return node.url;
 				});
 				message.urls.forEach(url => {
@@ -64,10 +101,8 @@ class Node {
 				break;
 			}
 			case VERSION: {
-				// Cập nhật url, pubKeyHash cho các node
 				this.url = message.url;
 				this.pubKeyHash = message.pubKeyHash;
-				// Nếu node kia muốn kết nối thì gửi lại gói VERSION, ngược lại gửi gói VERACK để xác nhận
 				if (message.wantConnect) {
 					this.Write({
 						header: VERSION,
@@ -83,18 +118,15 @@ class Node {
 				break;
 			}
 			case VERACK: {
-				// Thêm node này vào dictionary (nếu chưa có)
 				if (!nodes[this.pubKeyHash]) {
-					this.pubKeyHash = this;
+					nodes[this.pubKeyHash] = this;
 				}
-				// Nếu node kia muốn kết nối thì gửi lại gói VERACK
 				if (message.wantConnect) {
 					this.Write({
 						header: VERACK
 					});
 				} else {
-					// Ngược lại, nếu node kia là node tin cậy thì gửi yêu cầu lấy blockHeader tiếp theo trong chuỗi blockChain
-					if (trustedPeers.indexOf(this.pubKeyHash)) {
+					if (trustedPeers.indexOf(this.pubKeyHash) >= 0) {
 						this.Write({
 							header: GET_HEADER,
 							index: myBlockChain.GetLength()
@@ -104,30 +136,24 @@ class Node {
 				break;
 			}
 			case GET_HEADER: {
-				// Trả về header theo index được yêu cầu
 				this.Write({
 					header: HEADER,
-					blockHeader: myBlockChain.GetHeader(message.index);
+					blockHeader: myBlockChain.GetHeader(message.index)
 				});
 				break;
 			}
 			case HEADER: {
-				// Kiểm tra header có hợp lệ không
 				var preBlockHeader = null;
 				if (message.blockHeader.index == myBlockChain.GetLength() + 1) {
-					// Kiểm tra trong mảng tạm
 					preBlockHeader = tmpBlocks.find(block => {
 						return Crypto.Sha256(JSON.stringify(block.blockHeader)) == message.blockHeader.preBlockHash;
 					});
 				} else if (message.blockHeader.index == myBlockChain.GetLength()) {
-					// Kiểm tra trong chuỗi blockchain
 					preBlockHeader = myBlockChain.headers[myBlockChain.GetLength() - 1];
 				}
 				if (preBlockHeader) {
 					if (myBlockChain.ValidateBlockHeader(message.blockHeader, preBlockHeader)) {
-						// Thêm header vào mảng tmpHeaders
-						tmpHeaders.push(message.blockHeader);
-						// Yêu cầu lấy data
+						tmpHeaders.push(new BlockHeader(message.blockHeader));
 						this.Write({
 							header: GET_DATA,
 							blockHeaderHash: Crypto.Sha256(JSON.stringify(message.blockHeader))
@@ -137,7 +163,6 @@ class Node {
 				break;
 			}
 			case GET_DATA: {
-				// Trả về data theo blockHash, data được yêu cầu có thể nằm trong blockChain hoặc tmpBlocks
 				var blockData = myBlockChain.GetData(message.blockHeaderHash);
 				if (!blockData) {
 					var block = tmpBlocks.find(block => {
@@ -151,105 +176,90 @@ class Node {
 					header: DATA,
 					blockHeaderHash: message.blockHeaderHash,
 					blockData: blockData,
-					signature: Crypto.Sign(myPrivKey, blockHeaderHash)
+					signature: Crypto.Sign(myPrivKey, message.blockHeaderHash)
 				});
 				break;
 			}
 			case DATA: {
-				// Tìm blockHeader cần gắn vào
 				var blockHeader = tmpHeaders.find(blockHeader => {
 					return Crypto.Sha256(JSON.stringify(blockHeader)) == message.blockHeaderHash;
 				});
+				var blockData = new BlockData(message.blockData);
 				if (blockHeader) {
-					// Kiểm tra data và header trong mảng tmpHeaders có hợp lệ không
-					if (myBlockChain.ValidateBlockData(message.blockData, blockHeader)) {
-						// Xóa header trong mảng tmpHeaders
+					if (myBlockChain.ValidateBlockData(blockData, blockHeader)) {
 						tmpHeaders.splice(tmpHeaders.indexOf(blockHeader), 1);
-						// Tạo block mới và thêm vào mảng tmpBlocks
 						var newBlock = {
 							blockHeader: blockHeader,
 							blockData: blockData
 						};
 						tmpBlocks.push(newBlock);
-						// Nếu node gửi là node tin cậy
 						if (trustedPeers.indexOf(this.pubKeyHash) >= 0) {
-							// Yêu cầu lấy blockHeader liền sau
 							this.Write({
 								header: GET_HEADER,
 								index: blockHeader.index + 1
 							});
 						}
-						// Nếu block mới tạo cách 2 block so với block cuối cùng trong blockchain
 						if (blockHeader.index == myBlockChain.GetLength() + 1) {
-							// Thêm block liền trước vào blockchain
 							var preBlock = tmpBlocks.find(block => {
 								return Crypto.Sha256(JSON.stringify(block.blockHeader)) == blockHeader.preBlockHash;
 							});
 							myBlockChain.AddBlock(preBlock.blockHeader, preBlock.blockData);
-							// Xóa các block có cùng index với block vừa ghi trong mảng tmpBlocks
 							tmpBlocks = tmpBlocks.filter(block => {
 								return block.blockHeader.index > preBlock.blockHeader.index;
 							});
-							// Xóa các transaction đã được thực hiện trong mảng txPool
-
-							// Thông báo cho các node follow
-
-							// Cập nhật block dự định chọn
-							nextBlock = tmpBlocks[0];
-							// Chuyển qua trạng thái 2
+							txPool = txPool.filter(tx1 => {
+								return blockData.transactions.find(tx2 => {
+									JSON.stringify(tx2) == JSON.stringify(tx1);
+								}) == null;
+							});
+							// Thong bao cho cac node follow
+							nextBlock = newBlock;
 							state = 2;
-							// Nếu node đang chạy là node xác nhận
-							if (myBlockChain.IsOnTop(myPubKeyHash)) {
-								// setTimeOut, hết timeout, chuyển qua trạng thái 3, đồng thuận giữa các node xác nhận
-								setTimeout(() => {
-									if (state == 2) {
-										state = 3;
-										var message = {
-											header: HEADER,
-											blockHeader: nextBlock.blockHeader
-										};
-										myBlockChain.GetTopWallets().forEach(pubKeyHash => {
-											var node = nodes[pubKeyHash];
-											if (node) {
-												node.Write(message);
-											}
-										});
-										setTimeout(() => {
-											if (state == 3) {
-												state = 1;
-											}
-										}, Const.consensusDuration);
+							try {
+								clearTimeout(timeout1);
+							} catch (err) {
+								console.log(err);
+							}
+							timeout1 = setTimeout(() => {
+								state = 3;
+								if (myBlockChain.IsOnTop(myPubKeyHash)) {
+									var newMessage = {
+										header: HEADER,
+										blockHeader: nextBlock.blockHeader
+									};
+									myBlockChain.GetTopWallets().forEach(pubKeyHash => {
+										var node = nodes[pubKeyHash];
+										if (node) {
+											node.Write(newMessage);
+										}
+									});
+								}
+								timeout1 = setTimeout(() => {
+									state = 1;
+									try {
+										clearTimeout(timeout2);
+									} catch (err) {
+										console.log();
 									}
-								}, Const.blockDuration - Const.consensusDuration);
-							} else {
-								// setTimeOut, hết timeout, chuyển qua trạng thái 1
-								setTimeout(() => {
-									if (state == 2) {
-										state = 1;
-										// Đặt timeout cho việc chờ đủ điểm
-										setTimeout(() => {
-											if (state == 1 && myBlockChain.GetTimeMustWait(myPubKeyHash) == 0 && !myBlockChain.IsOnTop(myPubKeyHash)) {
-												if (txPool.length >= Const.nTx) {
-													// Tạo blockHeader và blockData mới
-													// Sau đó gửi đi ký tên
-												}
+									if (!myBlockChain.IsOnTop(myPubKeyHash)) {
+										timeout2 = setTimeout(() => {
+											if (txPool.length >= Const.nTx) {
+												this.CollectNewBlock();
 											}
 										}, myBlockChain.GetTimeMustWait(myPubKeyHash));
 									}
-								}, Const.blockDuration);
-							}
-						} else {
-							// Nếu state là 2 và block mới có thời gian thu thập so với nextBlock
-							if (state == 2 && blockHeader.GetTimeStamp() < nextBlock.blockHeader.GetTimeStamp()) {
-								// Chọn block mới tạo làm nextBlock
+								}, Const.consensusDuration);
+							}, Const.blockDuration - Const.consensusDuration);
+						} else if (state == 2) {
+							if (blockHeader.GetTimeStamp() < nextBlock.blockHeader.GetTimeStamp()) {
 								nextBlock = newBlock;
 							}
-							// Nếu state là 3
-							else if (state == 3) {
-								// Kiểm tra chữ ký trong gói tin, nếu người ký tên là node xác nhận và block mới có thời gian thu thập nhanh hơn nextBlock
-								if (Crypto.Verify(message.signature) && myBlockChain.IsOnTop(Crypto.Sha256(message.signature.pubKey)) && blockHeader.GetTimeStamp() < nextBlock.GetTimeStamp()) {
-									nextBlock = newBlock;
-								}
+						} else if (state == 3) {
+							if (Crypto.Verify(message.signature)
+								&& message.signature.message == Crypto.Sha256(JSON.stringify(blockHeader))
+								&& myBlockChain.IsOnTop(Crypto.Sha256(message.signature.pubKey))
+								&& blockHeader.GetTimeStamp() < nextBlock.GetTimeStamp()) {
+								nextBlock = newBlock;
 							}
 						}
 					}
@@ -257,51 +267,36 @@ class Node {
 				break;
 			}
 			case GET_UNSPENTOUTPUTS: {
-				// Trả về unSpentOutputs của wallet được yêu cầu
 				this.Write({
 					header: UNSPENTOUTPUTS,
 					unSpentOutputs: myBlockChain.GetUnSpentOutputs(message.pubKeyHash)
-				});
-				break;
-			}
-			case UNSPENTOUTPUTS: {
-				// Cài đặt phía client
+				})
 				break;
 			}
 			case TX: {
-				// Kiểm tra transaction có hợp lệ không
-				if (myBlockChain.ValidateTransaction(message.transaction)) {
-					// Thêm transaction vào mảng txPool
-					txPool.push(message.transaction);
-					// Nếu trạng thái hiện tại là 1 và đủ điểm tích lũy thì tạo block mới và gửi đi ký tên và node đang chạy là node thu thập
+				var transaction = new Transaction(message.transaction);
+				if (myBlockChain.ValidateTransaction(transaction)) {
+					txPool.push(transaction);
 					if (state == 1 && myBlockChain.GetTimeMustWait(myPubKeyHash) == 0 && txPool.length == Const.nTx) {
-						// Tạo blockHeader và blockData mới
-						// Sau đó gửi đi ký tên
-						// Node đang chạy là node thu thập
-
+						this.CollectNewBlock();
 					}
 				}
 				break;
 			}
 			case NEED_VALIDATING: {
-				// Nếu trạng thái hiện tại là 1 thì kiểm tra và ký tên xác nhận
 				if (state == 1) {
-					var signature = null;
-					if (message.preBlockHash == Crypto.Sha256(JSON.stringify(nextBlock.blockHeader))) {
-						signature = Crypto.Sign(myPrivKey, JSON.stringify({
-							preBlockHash: message.preBlockHash,
-							merkleRoot: message.merkleRoot,
-							timeStamp: (new Date()).getTime(),
-							isAgreed: true
-						}));
-					} else {
-						signature = Crypto.Sign(myPrivKey, JSON.stringify({
-							preBlockHash: Crypto.Sha256(JSON.stringify(nextBlock.blockHeader)),
-							merkleRoot: message.merkleRoot,
-							timeStamp: (new Date()).getTime(),
-							isAgreed: false
-						}));
+					var isAgreed = false;
+					if (message.preBlockHash == Crypto.Sha256(JSON.stringify(nextBlock.blockHeader))
+						&& message.index == nextBlock.blockHeader.index + 1) {
+						isAgreed = true;
 					}
+					var signature = Crypto.Sign(myPrivKey, JSON.stringify({
+						preBlockHash: Crypto.Sha256(JSON.stringify(nextBlock.blockHeader)),
+						index: nextBlock.blockHeader.index + 1,
+						merkleRoot: message.merkleRoot,
+						timeStamp: (new Date()).getTime(),
+						isAgreed: isAgreed
+					}));
 					this.Write({
 						header: VALIDATION_RESULT,
 						signature: signature
@@ -309,76 +304,54 @@ class Node {
 				}
 				break;
 			}
-			case VALIDATE_RESULT: {
-				// Kiểm tra trạng thái hiện tại có phải là 1 không
+			case VALIDATION_RESULT: {
 				if (state == 1) {
-					// Kiểm tra chữ ký có đúng và đồng ý ko
 					if (Crypto.Verify(message.signature)) {
-						var validateMessage = JSON.parse(message.signature).message;
-						if (validateMessage.preBlockHash == newBlock.blockHeader.preBlockHash &&
-							validateMessage.merkleRoot == newBlock.blockHeader.merkleRoot &&
-							validateMessage.isAgreed) {
-							// Kiểm tra người ký tên có nằm trong top 100 không
+						var validateMessage = JSON.parse(message.signature.message);
+						if (validateMessage.preBlockHash == unCompletedBlock.blockHeader.preBlockHash
+							&& validateMessage.index == unCompletedBlock.blockHeader.index
+							&& validateMessage.merkleRoot == unCompletedBlock.blockHeader.merkleRoot
+							&& validateMessage.isAgreed) {
 							if (myBlockChain.GetTopWallets().indexOf(Crypto.Sha256(message.signature.pubKey))) {
-								// Kiểm tra người ký tên có ký 2 lần không
 								if (!nextBlock.blockHeader.validatorSigns.find(signature => {
-									return signature.pubKey == message.signature.pubKey;
+									return signature.pubKey == message.signature.pubKey
 								})) {
-									// Thêm chữ ký vào blockHeader của block tiếp theo thứ tự tăng dần
-									var flag = false;
-									for (var i = 0; i < newBlock.blockHeader.validatorSigns.length; i++) {
-										var preTimeStamp = JSON.parse(newBlock.blockHeader.validatorSigns[i]).message.timeStamp;
-										if (preTimeStamp > validateMessage.timeStamp) {
-
-
-
-
-
-
-											flag = true;
-											break;
+									if (!unCompletedBlock.blockHeader.validatorSigns.find(signature => {
+										return signature.pubKey == message.signature.pubKey;
+									})) {
+										unCompletedBlock.blockHeader.AddSignature(message.signature);
+										if (unCompletedBlock.blockHeader.validatorSigns.length == Const.n) {
+											var validatorPubKeyHashes = unCompletedBlock.blockHeader.validatorSigns.map(signature => {
+												return Crypto.Sha256(signature.pubKey);
+											});
+											unCompletedBlock.blockData.AddValidatorRewards(validatorPubKeyHashes);
+											unCompletedBlock.blockHeader.Sign(myPrivKey);
+											var newMessage = {
+												header: HEADER,
+												blockHeader: unCompletedBlock.blockHeader
+											};
+											var allNodes = Object.values(nodes);
+											allNodes.forEach(node => {
+												node.Write(newMessage);
+											});
 										}
-									}
-									if (!flag) {
-										newBlock.blockHeader.validatorSigns.push(message.signature);
-									}
-									if (newBlock.blockHeader.validatorSigns.length == Const.n) {
-										// Nếu đủ số lượng chữ ký thì ký xác nhận thưởng cho các node ký tên và broadcast
-
-
-
-
-
-
 									}
 								}
 							}
-
 						}
 					}
 				}
 				break;
 			}
 			case FOLLOW: {
-				// Thêm node này vào danh sách các node theo dõi các giao dịch liên quan pubKeyHash
-				break;
-			}
-			case RECENT_TX: {
-				// Cài đặt bên ứng dụng cửa hàng
 				break;
 			}
 			default: {
-				// Gửi về thông báo lỗi
+				this.Write({
+					header: ERROR
+				});
 				break;
 			}
 		}
 	}
 }
-
-/*
- * 0. Dựng server để xử lý các yêu cầu
- * 1. Kết nối đến dnsserver, lấy danh sách các node khác, gửi yêu cầu kết nối. Cập nhật lại dnsserver
- * 2. Đọc file lastPeers, lấy danh sách đã kết nối lần trước, yêu cầu node đó gửi lại danh sách các peer khác, sau đó kết nối đến lastPeer và các peer khác
- * 3. Kết nối đến các trustedPeers, yêu cầu node đó gửi lại danh sách các peer khác, sau đó kết nối đến trustedPeer và các peer khác
- * 4. Đóng kết nối, ghi các nodes xuống file lastPeers
- */

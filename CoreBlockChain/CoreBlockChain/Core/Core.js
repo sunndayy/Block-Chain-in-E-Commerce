@@ -41,7 +41,7 @@ class Transaction {
 	/**
 	 * Hàm khởi tạo transaction
 	 * @param {JSON} obj: đối tượng JSON chứa thông tin của transaction bao gồm mảng txIn, mảng txOut, 
-	 * chữ ký của người thực hiện (không ký trên txIn nữa, chỉ ký 1 lần trên transaction) 
+	 * chữ ký của node thực hiện (không ký trên txIn nữa, chỉ ký 1 lần trên transaction) 
 	 */
 	constructor(obj) {
 		this.txIns = obj.txIns;
@@ -51,7 +51,7 @@ class Transaction {
 
 	/**
 	 * Ký tên lên giao dịch (gán giá trị cho thành phần senderSign)
-	 * @param {string} privKey: private key của người gửi
+	 * @param {string} privKey: private key của node gửi
 	 */
 	Sign(privKey) {
 
@@ -72,7 +72,7 @@ class BlockHeader {
 	 * @param {JSON} obj: đối tượng JSON chứa các thông tin của blockHeader bao gồm index, preBlockHash, 
 	 * merkleRoot, validatorSigns (mảng các chữ ký của các node xác nhận, thông tin cần ký bao gồm preBlockHash, 
 	 * merkleRoot, timeStamp (thời gian lúc ký, tính bằng milisecond), isAgreed (true/false, có đồng ý hay không)),
-	 * creatorSign (chữ ký của người thu thập, nội dung ký là danh sách các node xác nhận đã ký tên)
+	 * creatorSign (chữ ký của node thu thập, nội dung ký là danh sách các node xác nhận đã ký tên)
 	 */
 	constructor(obj) {
 		this.index = obj.index;
@@ -93,11 +93,29 @@ class BlockHeader {
 	}
 
 	/**
-	 * Trả về thời gian tạo của block này (thời gian ký trễ nhất trong những người xác nhận)
+	 * Trả về thời gian tạo của block này (thời gian ký trễ nhất trong những node xác nhận)
 	 * @returns {number}: thời gian ký trễ nhất tính theo milisecond
 	 * */
 	GetTimeStamp() {
 		return 0;
+	}
+
+	/**
+	 * Thêm chữ ký của node xác nhận vào danh sách validatorSigns (thêm theo kiểu insertion sort, sắp xếp tăng dần theo thời gian ký)
+	 * @param {JSON} signature: chữ ký của node xác nhận
+	 */
+	AddSignature(signature) {
+
+	}
+
+	/**
+	 * node thu thập ký tên thưởng cho những node xác nhận 
+	 * (nội dung ký: mảng các pubKeyHash của những node xác nhận đã ký tên)
+	 * gán chữ ký cho biến creatorSign
+	 * @param {string} privKey: private key của node thu thập
+	 */
+	Sign(privKey) {
+
 	}
 }
 
@@ -108,6 +126,28 @@ class BlockData {
 	 */
 	constructor(transactions) {
 		this.transactions = transactions;
+	}
+
+	/**
+	 * Tạo 1 giao dịch và thêm vào danh sách transactions để thưởng cho node thu thập
+	 * Giá trị thưởng bằng chênh lệch giữa tổng các input và output của tất cả transaction trong blockData
+	 * @param {string} pubKeyHash: pubKeyHash của node thu thập
+	 */
+	AddCreatorReWard(pubKeyHash) {
+
+	}
+
+	/**
+	 * Tạo 1 giao dịch và thêm vào danh sách transactions để thưởng cho tất cả node xác nhận đã ký tên
+	 * 1 input, nhiều output
+	 * @param {Array} validatorPubKeyHashes: mảng pubKeyHash của các node xác nhận
+	 */
+	AddValidatorRewards(validatorPubKeyHashes) {
+
+	}
+
+	MerkleRoot() {
+		return "";
 	}
 }
 
@@ -142,11 +182,11 @@ class BlockChain {
 		// Kiểm tra index, preBlockHash của blockHeader có phải của preBlockHeader không
 		// Kiểm tra thời gian ký trễ nhất của preBlockHeader
 		// và thời gian ký nhanh nhất của blockHeader cách nhau một khoảng thời gian t
-		// Kiểm tra người thu thập (creator) đã tích lũy đủ điểm chưa
-		// Kiểm tra người thu thập không nằm trong top đặt cọc (không phải người xác nhận)
+		// Kiểm tra node thu thập (creator) đã tích lũy đủ điểm chưa
+		// Kiểm tra node thu thập không nằm trong top đặt cọc (không phải node xác nhận)
 		// Kiểm tra thời gian ký trễ nhất của blockHeader có sớm hơn thời gian hiện tại không
-		// Kiểm tra tất cả những người ký tên của blockHeader nằm trong top 100 đặt cọc của hệ thống
-		// Kiểm tra những người ký tên preBlockHeader có ký tên blockHeader không (ký 2 block liên tiếp)
+		// Kiểm tra tất cả những node ký tên của blockHeader nằm trong top 100 đặt cọc của hệ thống
+		// Kiểm tra những node ký tên preBlockHeader có ký tên blockHeader không (ký 2 block liên tiếp)
 	}
 
 	/**
@@ -166,7 +206,7 @@ class BlockChain {
 	ValidateTransaction(transaction) {
 		// Kiểm tra tất cả input tồn tại
 		// Kiểm tra tất cả input không bị khóa (nếu bị khóa thì chỉ có thể gửi lại cho chính mình (rút cọc))
-		// Kiểm tra totalInput = k*totalOutput (k > 1, bao gồm cả tiền thưởng cho các nút thu thập)
+		// Kiểm tra totalInput = k*totalOutput (k > 1, bao gồm cả tiền thưởng cho các node thu thập)
 		return true;
 	}
 
@@ -179,13 +219,13 @@ class BlockChain {
 	ValidateBlockData(blockData, blockHeader) {
 		// Ghi chú: thứ tự trong các giao dịch trong blockData là 
 		// transactions - 
-		// phần thưởng cho nút thu thập(bằng phần dư ra trong các transaction) - 
-		// phần thưởng cho các nút xác nhận đã ký tên(1 giao dịch, nhiều output)
-		// Kiểm tra merkleRoot của blockData (không gồm phần thưởng cho các nút xác nhận đã ký tên)
+		// phần thưởng cho node thu thập(bằng phần dư ra trong các transaction) - 
+		// phần thưởng cho các node xác nhận đã ký tên(1 giao dịch, nhiều output)
+		// Kiểm tra merkleRoot của blockData (không gồm phần thưởng cho các node xác nhận đã ký tên)
 		// và merkleRoot của blockHeader có đúng không
 		// Kiểm tra blockData có hợp lệ không
 		// Kiểm tra số tiền thưởng của node thu thập có bằng phần dư ra của các transaction không
-		// Kiểm tra trong blockData có thưởng cho các nút xác nhận đã ký tên không
+		// Kiểm tra trong blockData có thưởng cho các node xác nhận đã ký tên không
 		return true;
 	}
 
@@ -215,7 +255,7 @@ class BlockChain {
 		// Thêm blockHeader vào mảng headers
 		// Ghi blockHeader, blockData vào cơ sở dữ liệu
 		// Cập nhật lại unSpentOutputs của các wallet
-		// Nếu trong các giao dịch có thông điệp đặt cọc, thông điệp rút cọc hoặc thông điệp được thưởng của nút thu thập thì cập nhật lại depositBlockIndex của wallet đó
+		// Nếu trong các giao dịch có thông điệp đặt cọc, thông điệp rút cọc hoặc thông điệp được thưởng của node thu thập thì cập nhật lại depositBlockIndex của wallet đó
 		// Cập nhật lại index của các wallet trong mảng walletArray
 	}
 
@@ -238,8 +278,8 @@ class BlockChain {
 
 	/**
 	 * Tính điểm cho một wallet
-	 * @param {Number} depositBlockIndex: index của block gần nhất mà wallet đã đặt cọc
-	 * @param {Number} totalDeposit: tổng số tiền đặt cọc
+	 * @param {number} depositBlockIndex: index của block gần nhất mà wallet đã đặt cọc
+	 * @param {number} totalDeposit: tổng số tiền đặt cọc
 	 * @returns {number}: số điểm đã tích cóp được của wallet
 	 */
 	CalculatePoint(depositBlockIndex, totalDeposit) {
@@ -252,7 +292,7 @@ class BlockChain {
 	/**
 	 * Tính thời gian phải chờ của 1 wallet
 	 * @param {string} pubKeyHash
-	 * @returns {Number}: thời gian phải chờ thêm, nếu không có đặt cọc thì trả về -1
+	 * @returns {number}: thời gian phải chờ thêm, nếu không có đặt cọc thì trả về -1
 	 */
 	GetTimeMustWait(pubKeyHash) {
 		// Tính tổng số tiền mà wallet này đã đặt cọc
@@ -263,9 +303,13 @@ class BlockChain {
 		return 0;
 	}
 
+	/**
+	 * Lấy độ dài chuỗi blockChain
+	 * @returns {number}: độ dài chuỗi blockChain
+	 * */
 	GetLength() {
 		return this.headers.length;
 	}
 }
 
-module.exports = BlockChain;
+module.exports = { Transaction, BlockHeader, BlockData, BlockChain };
