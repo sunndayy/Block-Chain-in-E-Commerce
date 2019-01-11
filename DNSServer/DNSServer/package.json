@@ -1,0 +1,12 @@
+{
+  "name": "dnsserver",
+  "version": "0.0.0",
+  "description": "DNSServer",
+  "main": "server.js",
+  "author": {
+    "name": ""
+  },
+  "dependencies": {
+    "websocket": "^1.0.28"
+  }
+}
