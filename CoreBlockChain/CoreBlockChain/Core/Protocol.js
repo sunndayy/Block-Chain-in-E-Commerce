@@ -442,7 +442,7 @@ class Node {
 			//					if (Crypto.Verify(message.signature)
 			//						&& message.signature.message == blockHeader.GetHash()
 			//						&& myBlockChain.IsOnTop(Crypto.Sha256(message.signature.pubKey))
-			//						&& blockHeader.GetTimeStamp() < nextBlock.GetTimeStamp()) {
+			//						&& blockHeader.GetTimeStamp() < nextBlock.blockHeader.GetTimeStamp()) {
 			//						nextBlock = newBlock;
 			//					}
 			//				}
