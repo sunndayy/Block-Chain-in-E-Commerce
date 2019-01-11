@@ -1,10 +1,14 @@
-﻿/**
+﻿const sha256 = require('sha256');
+const EC = require('elliptic').ec;
+const ec = new EC('secp256k1');
+
+/**
  * Hash chuỗi đầu vào bằng thuật toán Sha256
  * @param {string} s: chuỗi đầu vào
  * @returns {string}: chuỗi mới sau khi hash
  */
 function Sha256(s) {
-	return "";
+    return sha256(s);
 }
 
 /**
@@ -14,7 +18,9 @@ function Sha256(s) {
  * @returns {JSON}: đối tượng json chứa các thông tin bao gồm thông điệp gốc (message), public key của người ký (pubKey), chữ ký (signature)
  */
 function Sign(privKey, message) {
-	return null;
+    var key = ec.keyFromPrivate(privKey, 'hex');
+    var messageHash = sha256(message, { asBytes: true });
+    return { message: message, pubKey: key.getPublic('hex'), signature: key.sign(messageHash) };
 }
 
 /**
@@ -23,7 +29,9 @@ function Sign(privKey, message) {
  * @returns {boolean}: kết quả kiểm tra (đúng/sai)
  */
 function Verify(signature) {
-	return true;
+    var key = ec.keyFromPublic(signature.pubKey, 'hex');
+    var messageHash = sha256(signature.message, { asBytes: true });
+    return key.verify(messageHash, signature.signature.toDER());
 }
 
 /**
@@ -31,7 +39,7 @@ function Verify(signature) {
  * @returns {string}: private key mới
  * */
 function GetKey() {
-	return "";
+    return ec.genKeyPair().getPrivate('hex');
 }
 
 module.exports = { Sha256, Sign, Verify };
