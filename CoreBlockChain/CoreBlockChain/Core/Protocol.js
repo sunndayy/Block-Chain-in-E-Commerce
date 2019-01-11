@@ -665,6 +665,7 @@ function main() {
 	});
 
 	process.on("SIGINT", code => {
+		fs.writeFileSync(Const.nextBlockFile, JSON.stringify(nextBlock));
 		process.exit();
 	});
 }
