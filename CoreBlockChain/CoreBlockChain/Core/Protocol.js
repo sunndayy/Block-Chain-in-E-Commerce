@@ -125,13 +125,6 @@ class Node {
 			if (nodes[this.pubKeyHash]) {
 				delete nodes[this.pubKeyHash];
 			}
-			var _subscribers = subscribers[this.pubKeyHash];
-			if (_subscribers) {
-				_subscribers.splice(_subscribers.indexOf(this), 1);
-				if (_subscribers.length == 0) {
-					delete subscribers[_subscribers];
-				}
-			}
 		});
 	}
 
