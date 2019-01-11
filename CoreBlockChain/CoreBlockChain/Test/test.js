@@ -386,7 +386,3 @@
 // */
 
 
-
-// Test phần của Dương
-var Core = require('../Core/Core.js');
-

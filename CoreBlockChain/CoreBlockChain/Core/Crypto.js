@@ -42,4 +42,4 @@ function GetKey() {
     return ec.genKeyPair().getPrivate('hex');
 }
 
-module.exports = { Sha256, Sign, Verify };
+module.exports = { Sha256, Sign, Verify, GetKey };
