@@ -153,6 +153,7 @@ class Node {
 	constructor(connection) {
 		this.connection = connection;
 		this.followList = []; // Danh sách những ví mà node này muốn theo dõi
+
 		this.connection.on("message", message => {
 			console.log(message.utf8Data);
 			try {
@@ -261,8 +262,8 @@ class Node {
 			//}
 
 			//case HEADER: {
-			//	var blockHeader = message.blockHeader;
-			//	if (blockHeader) {
+			//	if (message.blockHeader) {
+			//		var blockHeader = new BlockHeader(message.blockHeader);
 			//		var preBlockHeader = null;
 
 			//		// Tìm preBlockHeader
