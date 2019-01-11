@@ -1,4 +1,5 @@
-﻿var Crypto = require('./Crypto.js');
+﻿const Crypto = require('./Crypto.js');
+const Const = require('./Const.js');
 
 class Wallet {
 	/**
@@ -55,16 +56,17 @@ class Transaction {
 	 * Ký tên lên giao dịch (gán giá trị cho thành phần senderSign)
 	 * @param {string} privKey: private key của node gửi
 	 */
-	Sign(privKey) {
-
+    Sign(privKey) {
+        var message = JSON.stringify(this.txIns) + JSON.stringify(this.txOuts);
+        this.senderSign = Crypto.Sign(privKey, message);
 	}
 
 	/**
 	 * Kiểm tra chữ ký có hợp lệ không (không cần kiểm tra các txIn có tồn tại không)
 	 * @returns {boolean}: kết quả kiểm tra
 	 * */
-	Verify() {
-		return true;
+    Verify() {
+        return Crypto.Verify(this.senderSign);
 	}
 }
 
@@ -90,23 +92,73 @@ class BlockHeader {
 	 * Kiểm tra chữ ký và nội dung ký của node thu thập có đúng và hợp lệ không
 	 * @returns {boolean}: kết quả kiểm tra
 	 * */
-	Verify() {
-		return true;
+    Verify() {
+        var flag = true;
+
+        for (var i = 0; i < this.validatorSigns.length - 1; i++) {
+            var msg1 = JSON.parse(this.validatorSigns[i].message);
+            var msg2 = JSON.parse(this.validatorSigns[i + 1].message);
+            if (msg1.timeStamp > msg2.timeStamp) {
+                flag = false;
+                break;
+            }
+        }
+
+        for (var i = 0; i < this.validatorSigns.length; i++) {
+            if (!Crypto.Verify(this.validatorSigns[i])) {
+                flag = false;
+                break;
+            }
+            if (JSON.parse(this.validatorSigns[i].message).isAgreed == false) {
+                flag = false;
+                break;
+            }
+        }
+
+        if (!Crypto.Verify(this.creatorSign)) {
+            flag = false;
+        }
+
+        return flag;
 	}
 
 	/**
 	 * Trả về thời gian tạo của block này (thời gian ký trễ nhất trong những node xác nhận)
 	 * @returns {number}: thời gian ký trễ nhất tính theo milisecond
 	 * */
-	GetTimeStamp() {
-		return 0;
+    GetTimeStamp() {
+        var message = JSON.parse(this.validatorSigns[this.validatorSigns.length - 1].message);
+        return message.timeStamp;
 	}
 
 	/**
 	 * Thêm chữ ký của node xác nhận vào danh sách validatorSigns (thêm theo kiểu insertion sort, sắp xếp tăng dần theo thời gian ký)
 	 * @param {JSON} signature: chữ ký của node xác nhận
 	 */
-	AddSignature(signature) {
+    AddSignature(signature) {
+        if (this.validatorSigns.length == 0) {
+            this.validatorSigns.push(signature);
+            return;
+        }
+
+        var timeStamp = JSON.parse(signature.message).timeStamp;
+
+        if (timeStamp <= JSON.parse(this.validatorSigns[0].message).timeStamp) {
+            this.validatorSigns.unshift(signature);
+            return;
+        }
+
+        if (timeStamp >= JSON.parse(this.validatorSigns[this.validatorSigns.length - 1].message).timeStamp) {
+            this.validatorSigns.push(signature);
+            return;
+        }
+
+        for (var i = 0; i < this.validatorSigns.length - 1; i++) {
+            if (timeStamp >= JSON.parse(this.validatorSigns[i].message).timeStamp
+                && timeStamp <= JSON.parse(this.validatorSigns[i + 1].message).timeStamp) {
+                this.validatorSigns.splice(i + 1, 0, signature);
+            }
+        }
 
 	}
 
@@ -117,7 +169,12 @@ class BlockHeader {
 	 * @param {string} privKey: private key của node thu thập
 	 */
 	Sign(privKey) {
-
+        var pubKeyHashs = [];
+        for (var i = 0; i < this.validatorSigns.length; i++) {
+            var pubKey = this.validatorSigns[i].pubKey;
+            pubKeyHashs.push(Crypto.Sha256(pubKey));
+        }
+        this.creatorSign = Crypto.Sign(privKey, JSON.stringify(pubKeyHashs));
 	}
 }
 
@@ -134,22 +191,59 @@ class BlockData {
 	 * Tạo 1 giao dịch và thêm vào danh sách transactions để thưởng cho node thu thập
 	 * Giá trị thưởng bằng chênh lệch giữa tổng các input và output của tất cả transaction trong blockData
 	 * @param {string} pubKeyHash: pubKeyHash của node thu thập
+     * 0 input, 1 output
 	 */
-	AddCreatorReWard(pubKeyHash) {
-
+    AddCreatorReWard(pubKeyHash) {
+        var reward = 0;
+        var txOut = new TxOut({ pubKeyHash: pubKeyHash, money: reward, isLocked: false });
+        var tx = new Transaction({ txIns: [], txOuts: [txOut], senderSign: null });
+        this.transactions.push(tx);
 	}
 
 	/**
 	 * Tạo 1 giao dịch và thêm vào danh sách transactions để thưởng cho tất cả node xác nhận đã ký tên
-	 * 1 input, nhiều output
+	 * 0 input, nhiều output
+     * Giá trị thưởng là hằng số
 	 * @param {Array} validatorPubKeyHashes: mảng pubKeyHash của các node xác nhận
 	 */
 	AddValidatorRewards(validatorPubKeyHashes) {
-
+        var txOuts = [];
+        for (var i = 0; i < validatorPubKeyHashes.length; i++) {
+            var txOut = new TxOut({ pubKeyHash: validatorPubKeyHashes[i], money: Const.reward, isLocked: false });
+            txOuts.push(txOut);
+        }
+        var tx = new Transaction({ txIns: [], txOuts: txOuts, senderSign: null });
+        this.transactions.push(tx);
 	}
 
-	MerkleRoot() {
-		return "";
+    MerkleRoot() {
+        if (this.transactions.length == 0) {
+            return '';
+        }
+
+        var tmp1 = [];
+        for (var i = 0; i < Const.nTx + 1; i++) {
+            tmp1.push(Crypto.Sha256(JSON.stringify(this.transactions[i])));
+        }
+
+        while (tmp1.length > 1) {
+            var tmp2 = [];
+            for (var i = 0; i < tmp1.length; i = i + 2) {
+                var h1 = tmp[i];
+                var h2;
+                if (i == tmp1.length - 1) {
+                    h2 = h1;
+                }
+                else {
+                    h2 = tmp1[i + 1];
+                }
+                var h = Crypto.Sha256(h1 + h2);
+                tmp2.push(h);
+            }
+            tmp1 = tmp2;
+        }
+
+		return tmp1[0];
 	}
 }
 
