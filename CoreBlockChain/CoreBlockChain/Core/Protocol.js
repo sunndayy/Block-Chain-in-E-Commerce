@@ -120,7 +120,7 @@ function CollectNewBlock() {
 	// Tạo blockHeader mới
 	var newBlockHeader = new BlockHeader({
 		index: nextBlock.blockHeader.index + 1,
-		preBlockHash: Crypto.Sha256(JSON.stringify(nextBlock.blockHeader)),
+		preBlockHash: nextBlock.blockHeader.GetHash(),
 		merkleRoot: newBlockData.MerkleRoot(),
 		validatorSigns: []
 	});
@@ -268,7 +268,7 @@ class Node {
 			//		// Tìm preBlockHeader
 			//		if (blockHeader.index == myBlockChain.GetLength() + 1) {
 			//			var preBlock = tmpBlocks.find(block => {
-			//				return Crypto.Sha256(JSON.stringify(block.blockHeader)) == blockHeader.preBlockHash;
+			//				return block.blockHeader.GetHash() == blockHeader.preBlockHash;
 			//			});
 			//			if (preBlock) {
 			//				preBlockHeader = preBlock.blockHeader;
@@ -282,7 +282,7 @@ class Node {
 			//				tmpHeaders.push(blockHeader);
 			//				this.Write({
 			//					header: GET_DATA,
-			//					blockHeaderHash: Crypto.Sha256(JSON.stringify(blockHeader))
+			//					blockHeaderHash: blockHeader.GetHash()
 			//				});
 			//			}
 			//		}
@@ -295,7 +295,7 @@ class Node {
 			//	var blockData = myBlockChain.GetData(message.blockHeaderHash);
 			//	if (!blockData) {
 			//		var block = tmpBlocks.find(block => {
-			//			return Crypto.Sha256(JSON.stringify(block.blockHeader)) == message.blockHeaderHash;
+			//			return block.blockHeader.GetHash() == message.blockHeaderHash;
 			//		});
 			//		if (block) {
 			//			blockData = block.blockData;
@@ -315,7 +315,7 @@ class Node {
 			//	if (message.blockData) {
 			//		// Tìm blockHeader tương ứng với blockData
 			//		var blockHeader = tmpHeaders.find(blockHeader => {
-			//			return Crypto.Sha256(JSON.stringify(blockHeader)) == message.blockHeaderHash;
+			//			return blockHeader.GetHash() == message.blockHeaderHash;
 			//		});
 			//		if (blockHeader) {
 			//			var blockData = new BlockData(message.blockData);
@@ -342,7 +342,7 @@ class Node {
 			//				if (blockHeader.index == myBlockChain.GetLength() + 1) {
 			//					// Thêm block liền trước vào chuỗi blockChain
 			//					var preBlock = tmpBlocks.find(block => {
-			//						return Crypto.Sha256(JSON.stringify(block.blockHeader)) == blockHeader.preBlockHash;
+			//						return block.blockHeader.GetHash() == blockHeader.preBlockHash;
 			//					});
 			//					myBlockChain.AddBlock(preBlock.blockHeader, preBlock.blockData);
 
@@ -439,7 +439,7 @@ class Node {
 			//					}
 			//				} else if (state == 3) {
 			//					if (Crypto.Verify(message.signature)
-			//						&& message.signature.message == Crypto.Sha256(JSON.stringify(blockHeader))
+			//						&& message.signature.message == blockHeader.GetHash()
 			//						&& myBlockChain.IsOnTop(Crypto.Sha256(message.signature.pubKey))
 			//						&& blockHeader.GetTimeStamp() < nextBlock.GetTimeStamp()) {
 			//						nextBlock = newBlock;
@@ -475,12 +475,12 @@ class Node {
 			//	// Nếu trạng thái hiện tại là 1 thì kiểm tra
 			//	if (state == 1) {
 			//		var isAgreed = false;
-			//		if (message.preBlockHash == Crypto.Sha256(JSON.stringify(nextBlock.blockHeader))
+			//		if (message.preBlockHash == nextBlock.blockHeader.GetHash()
 			//			&& message.index == nextBlock.blockHeader.index + 1) {
 			//			isAgreed = true;
 			//		}
 			//		var signature = Crypto.Sign(myPrivKey, JSON.stringify({
-			//			preBlockHash: Crypto.Sha256(JSON.stringify(nextBlock.blockHeader)),
+			//			preBlockHash: nextBlock.blockHeader.GetHash(),
 			//			index: nextBlock.blockHeader.index + 1,
 			//			merkleRoot: message.merkleRoot,
 			//			timeStamp: (new Date()).getTime(),
@@ -550,16 +550,16 @@ class Node {
 			//	break;
 			//}
 
-			case FOLLOW: {
-				if (!followers[message.pubKeyHash]) {
-					followers[message.pubKeyHash] = [];
-				}
-				if (followers[message.pubKeyHash].indexOf(this) < 0) {
-					followers[message.pubKeyHash].push(this);
-				}
-				this.followList.push(message.pubKeyHash);
-				break;
-			}
+			//case FOLLOW: {
+			//	if (!followers[message.pubKeyHash]) {
+			//		followers[message.pubKeyHash] = [];
+			//	}
+			//	if (followers[message.pubKeyHash].indexOf(this) < 0) {
+			//		followers[message.pubKeyHash].push(this);
+			//	}
+			//	this.followList.push(message.pubKeyHash);
+			//	break;
+			//}
 
 			case ERROR: {
 				break;
