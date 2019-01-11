@@ -1,5 +1,3 @@
-﻿const N = 100;
-const n = 40;
 ﻿const N = 100; // so luong node ky ten hop le
 const n = 40; // so luong chu ky can thiet
 const nTx = 15; // so luong giao dich trong 1 block
@@ -14,5 +12,4 @@ const peersFile = "./peers.txt";
 const nextBlockFile = "./nextBlockFile.txt";
 const privKeyFile = "./privKey.txt";
 const urlFile = "./url.txt";
-module.exports = { N, n, nTx, consensusDuration, blockDuration, needPoint, systemPort, trustedPeers, dnsServer, peersFile, nextBlockFile, privKeyFile, urlFile };module.exports = { N, n, nTx, consensusDuration, blockDuration, needPoint, systemPort, trustedPeers, dnsServer, peersFile, nextBlockFile, privKeyFile, urlFile };
 module.exports = { N, n, nTx, consensusDuration, blockDuration, needPoint, systemPort, trustedPeers, dnsServer, peersFile, nextBlockFile, privKeyFile, urlFile };
