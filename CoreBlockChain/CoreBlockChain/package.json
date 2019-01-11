@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "elliptic": "^6.4.1",
+    "level": "^4.0.0",
     "sha256": "^0.2.0"
   }
 }

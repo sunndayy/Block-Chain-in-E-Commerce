@@ -1,5 +1,10 @@
 ﻿const Crypto = require('./Crypto.js');
 const Const = require('./Const.js');
+var level = require('level');
+var BlockHeaderDB = level('./BlockHeaderDB', { valueEncoding: 'json' });
+var BlockDataDB = level('./BlockDataDB', { valueEncoding: 'json' });
+var WalletDB = level('./WalletDB', { valueEncoding: 'json' });
+
 
 class Wallet {
 	/**
@@ -255,7 +260,18 @@ class BlockChain {
 		this.headers = []; // mảng các header của các block
 		this.walletArray = []; // mảng pubKeyHash của các wallet sắp xếp theo tiền đặt cọc giảm dần (wallet đầu tiên đặt cọc nhiều nhất)
 		this.walletDictionary = {}; // dictionary với key là pubKeyHash của một wallet, value là đối tượng wallet tương ứng
-		// Đọc dữ liệu từ levelDB, dựng lại mảng các header, cập nhật các wallet
+        // Đọc dữ liệu từ levelDB, dựng lại mảng các header, cập nhật các wallet
+        BlockHeaderDB.createReadStream().on('data', function (data) {
+            this.headers.push(data.value);
+        }).on('error', function (err) {
+            console.log(err);
+            });
+
+        WalletDB.createReadStream().on('data', function (data) {
+            this.walletArray.push(data.key);
+            this.walletDictionary[data.key] = data.value;
+        })
+
 	}
 
 	GetHeader(index) {
@@ -290,8 +306,18 @@ class BlockChain {
 	 * @param {string} blockHeaderHash: blockHeaderHash của block cần lấy data
 	 * @returns {BlockData}: blockData tương ứng với blockHeaderHash, nếu không có thì trả về null
 	 */
-	GetData(blockHeaderHash) {
-		return null;
+    GetData(blockHeaderHash) {
+        var blockData = null;
+        BlockDataDB.get(blockHeaderHash, function (err, value) {
+            if (err) {
+                if (err.notFound) {
+                    return;
+                }
+            }
+
+            blockData = value;
+        });
+        return blockData;
 	}
 
 	/**
