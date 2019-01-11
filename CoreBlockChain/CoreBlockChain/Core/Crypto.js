@@ -42,7 +42,6 @@ function GetKey() {
     return ec.genKeyPair().getPrivate('hex');
 }
 
-<<<<<<< HEAD
 /**
  * Tạo public key hash từ privite key
  * @param {string} privKey
@@ -53,6 +52,3 @@ function GetPubKeyHash(privKey) {
 }
 
 module.exports = { Sha256, Sign, Verify, GetKey, GetPubKeyHash };
-=======
-module.exports = { Sha256, Sign, Verify, GetKey };
->>>>>>> 298085d17857ac4720a7a0881e52141205269afa
