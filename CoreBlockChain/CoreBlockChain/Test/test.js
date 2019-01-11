@@ -384,3 +384,9 @@
 // * 3. Kết nối đến các trustedPeers, yêu cầu node đó gửi lại danh sách các peer khác, sau đó kết nối đến trustedPeer và các peer khác
 // * 4. Đóng kết nối, ghi các nodes xuống file lastPeers
 // */
+
+
+
+// Test phần của Dương
+var Core = require('../Core/Core.js');
+

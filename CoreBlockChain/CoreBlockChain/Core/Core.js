@@ -1,4 +1,6 @@
-﻿class Wallet {
+﻿var Crypto = require('./Crypto.js');
+
+class Wallet {
 	/**
 	 * Hàm khởi tạo wallet
 	 * @param {string} pubKeyHash: public key hash của wallet
