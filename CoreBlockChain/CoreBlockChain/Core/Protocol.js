@@ -155,16 +155,14 @@ class Node {
 		this.followList = []; // Danh sách những ví mà node này muốn theo dõi
 
 		this.connection.on("message", message => {
-			console.log(message.utf8Data);
 			try {
-				this.HandleMessage(JSON.parse(message.utf8Data));
+				var message = JSON.parse(message.utf8Data);
+				console.log(message);
+				console.log();
+				this.HandleMessage(message);
 			} catch (err) {
 				console.log(err);
 			}
-		});
-
-		this.connection.on("error", err => {
-			console.log("Connection error: " + err);
 		});
 
 		this.connection.on("close", (reasonCode, description) => {
@@ -596,10 +594,6 @@ function ConnectDNSServer() {
 
 				// Đăng ký thông tin với dnsServer
 				var client = new WebSocketClient();
-
-				client.on("connectFailed", err => {
-					console.log("Connect Error: " + err);
-				});
 
 				client.on("connect", connection => {
 					connection.sendUTF(JSON.stringify({
