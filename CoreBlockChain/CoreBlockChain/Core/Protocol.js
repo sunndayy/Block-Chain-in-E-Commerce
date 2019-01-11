@@ -1,5 +1,10 @@
 ﻿// Module
 const http = require("http");
+const readline = require("readline");
+const rl = readline.createInterface({
+	input: process.stdin,
+	output: process.stdout
+});
 const WebSocketServer = require("websocket").server;
 const WebSocketClient = require("websocket").client;
 const fs = require("fs");
@@ -27,10 +32,12 @@ const VALIDATE_RESULT = "validate_result";
 const FOLLOW = "follow";
 const RECENT_TX = "recent_tx";
 const ERROR = "error";
-const trustedPeers = [];
-const dnsServer = "http://localhost:1337";
-const peersFile = "./peers.txt";
-const nextBlockFile = "./nextBlockFile.txt";
+
+// Constant
+const trustedPeers = Const.trustedPeers;
+const dnsServer = Const.dnsServer;
+const peersFile = Const.peersFile;
+const nextBlockFile = Const.nextBlockFile;
 
 /**
  * Tạo socket đến url chỉ định, gửi gói tin VERSION
@@ -102,7 +109,7 @@ class Node {
 		this.connection = connection;
 
 		this.connection.on("message", message => {
-			console.log(message);
+			console.log(message.utf8Data);
 			try {
 				this.HandleMessage(JSON.parse(message.utf8Data));
 			} catch (err) {
@@ -122,7 +129,7 @@ class Node {
 			if (_subscribers) {
 				_subscribers.splice(_subscribers.indexOf(this), 1);
 				if (_subscribers.length == 0) {
-					delete subscribers[this.pubKeyHash];
+					delete subscribers[_subscribers];
 				}
 			}
 		});
@@ -539,6 +546,20 @@ function ConnectDNSServer() {
 						Connect(url);
 					});
 				}
+
+				// Đăng ký thông tin với dnsServer
+				var client = new WebSocketClient();
+
+				client.on("connectFailed", err => {
+					console.log("Connect Error: " + err);
+				});
+
+				client.on("connect", connection => {
+					connection.sendUTF(JSON.stringify({
+						header: "addr",
+						addr: myUrl
+					}));
+				});
 			});
 		} catch (err) {
 			console.log(err);
@@ -577,9 +598,9 @@ function ReadPeersFile() {
 
 function main() {
 	// My info
-	var myPrivKey = null;
-	var myPubKeyHash = null;
-	var myUrl = null;
+	var myPrivKey = fs.readFileSync(Const.privKeyFile);
+	var myPubKeyHash = Crypto.GetPubKeyHash(myPrivKey);
+	var myUrl = fs.readFileSync(Const.urlFile);
 
 	// Dictionary các node trong hệ thống
 	var nodes = {};
@@ -638,7 +659,9 @@ function main() {
 	// Tạo socket để lắng nghe kết nối
 	var server = http.createServer((req, res) => {
 	});
-	server.listen(Const.systemPort);
+	server.listen(Const.systemPort, () => {
+		console.log("Socket is running on port " + Const.systemPort);
+	});
 
 	var wsServer = new WebSocketServer({
 		httpServer: server,
@@ -646,6 +669,10 @@ function main() {
 	});
 	wsServer.on("request", req => {
 		new Node(req.accept("echo-protocol", req.origin));
+	});
+
+	process.on("SIGINT", code => {
+		process.exit();
 	});
 }
 
