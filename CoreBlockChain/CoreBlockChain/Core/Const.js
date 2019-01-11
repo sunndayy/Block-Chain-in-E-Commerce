@@ -15,3 +15,4 @@ const nextBlockFile = "./nextBlockFile.txt";
 const privKeyFile = "./privKey.txt";
 const urlFile = "./url.txt";
 module.exports = { N, n, nTx, consensusDuration, blockDuration, needPoint, systemPort, trustedPeers, dnsServer, peersFile, nextBlockFile, privKeyFile, urlFile };module.exports = { N, n, nTx, consensusDuration, blockDuration, needPoint, systemPort, trustedPeers, dnsServer, peersFile, nextBlockFile, privKeyFile, urlFile };
+module.exports = { N, n, nTx, consensusDuration, blockDuration, needPoint, systemPort, trustedPeers, dnsServer, peersFile, nextBlockFile, privKeyFile, urlFile };
