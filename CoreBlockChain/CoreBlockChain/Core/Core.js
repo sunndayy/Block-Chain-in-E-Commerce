@@ -284,6 +284,21 @@ class BlockChain {
         this.walletArray.sort(function (a, b) {
             var totalDepositA = 0; totalDepositB = 0;
 
+            var walletA = this.walletDictionary[a];
+            var walletB = this.walletDictionary[b];
+
+            for (var i = 0; i < walletA.unSpentOutputs.length; i++) {
+                if (walletA.unSpentOutputs[i].isLocked) {
+                    totalDepositA += walletA.unSpentOutputs[i].money;
+                }
+            }
+
+            for (var i = 0; i < walletB.unSpentOutputs.length; i++) {
+                if (walletB.unSpentOutputs[i].isLocked) {
+                    totalDepositB += walletB.unSpentOutputs[i].money;
+                }
+            }
+
             if (totalDepositA > totalDepositB) {
                 return -1;
             }
@@ -330,7 +345,16 @@ class BlockChain {
         }
         // Kiểm tra node thu thập (creator) đã tích lũy đủ điểm chưa
         var pubKeyCreator = JSON.parse(blockHeader.creatorSign.message).pubKey;
-        
+        var walletCreator = this.walletDictionary[pubKeyCreator];
+        var total = 0;
+        for (var i = 0; i < walletB.unSpentOutputs.length; i++) {
+            if (walletB.unSpentOutputs[i].isLocked) {
+                total += walletCreator.unSpentOutputs[i].money;
+            }
+        }
+        if (this.CalculatePoint(walletCreator.depositBlockIndex, total) < Const.needPoint) {
+            return false;
+        }       
         // Kiểm tra node thu thập không nằm trong top đặt cọc (không phải node xác nhận)
         var msg3 = JSON.parse(blockHeader.creatorSign).message;
         if (this.walletArray.indexOf(Crypto.Sha256(msg3.pubKey)) != -1) {
@@ -341,10 +365,31 @@ class BlockChain {
         if (Date.now() - msg4.timeStamp < 0) {
             return false;
         }
-		// Kiểm tra tất cả những node ký tên của blockHeader nằm trong top 100 đặt cọc của hệ thống
-		// Kiểm tra những node ký tên preBlockHeader có ký tên blockHeader không (ký 2 block liên tiếp)
+        // Kiểm tra tất cả những node ký tên của blockHeader nằm trong top 100 đặt cọc của hệ thống
+        var flag = true;
+        for (var i = 0; i < blockHeader.validatorSigns.length; i++) {
+            var msg = JSON.parse(blockHeader.validatorSigns[i].message);
+            if (!this.IsOnTop(Crypto.Sha256(msg.pubKey))) {
+                flag = false;
+                break;
+            }
+        }
+        // Kiểm tra những node ký tên preBlockHeader có ký tên blockHeader không (ký 2 block liên tiếp)
+        for (var i = 0; i < preBlockHeader.validatorSigns.length; i++) {
+            if (!flag) {
+                break;
+            }
+            var msg1 = JSON.parse(preBlockHeader.validatorSigns[i].message);
+            for (var j = 0; j < blockHeader.validatorSigns.length; j++) {
+                var msg2 = JSON.parse(blockHeader.validatorSigns[i].message);
+                if (msg1.pubKey == msg2.pubKey) {
+                    flag = false;
+                    break;
+                }
+            }
+        }
 
-        return true;
+        return flag;
 	}
 
 	/**
@@ -474,7 +519,7 @@ class BlockChain {
             }
         }
         // Lấy thời gian hiện tại trừ cho thời gian của block mới lấy
-        var time = Date.now() - blockHeader.timeStamp;
+        var time = Date.now() - blockHeader.GetTimeStamp();
         // Lấy kết quả nhân với số tiền đã đặt cọc
         return time * totalDeposit;
 	}
@@ -501,7 +546,7 @@ class BlockChain {
                 break;
             }
         }
-        var time = Date.now() - blockHeader.timeStamp;
+        var time = Date.now() - blockHeader.GetTimeStamp();
 
         // Lấy kết quả nhân với số tiền đã đặt cọc
         var temp = total * time;
