@@ -200,6 +200,15 @@ class BlockData {
 	 */
     AddCreatorReWard(pubKeyHash) {
         var reward = 0;
+        var totalInput = 0, totalOutput = 0;
+        for (var i = 0; i < this.transactions.length; i++) {
+            for (var j = 0; j < this.transactions[i].txOuts; j++) {
+                totalOutput += this.transactions[i].txOuts[j].money;
+            }
+        }
+
+        reward = totalInput - totalOutput;
+
         var txOut = new TxOut({ pubKeyHash: pubKeyHash, money: reward, isLocked: false });
         var tx = new Transaction({ txIns: [], txOuts: [txOut], senderSign: null });
         this.transactions.push(tx);
@@ -270,7 +279,21 @@ class BlockChain {
         WalletDB.createReadStream().on('data', function (data) {
             this.walletArray.push(data.key);
             this.walletDictionary[data.key] = data.value;
-        })
+        });
+
+        this.walletArray.sort(function (a, b) {
+            var totalDepositA = 0; totalDepositB = 0;
+
+            if (totalDepositA > totalDepositB) {
+                return -1;
+            }
+            if (totalDepositA < totalDepositB) {
+                return 1;
+            }
+            if (totalDepositA = totalDepositB) {
+                return 0;
+            }
+        });
 
 	}
 
@@ -291,14 +314,37 @@ class BlockChain {
 		if (!blockHeader.Verify()) {
 			return false;
 		}
-		// Kiểm tra index, preBlockHash của blockHeader có phải của preBlockHeader không
+        // Kiểm tra index, preBlockHash của blockHeader có phải của preBlockHeader không
+        if (blockHeader.index != preBlockHeader.index - 1) {
+            return false;
+        }
+        if (blockHeader.preBlockHash != Crypto.Sha256(preBlockHeader.index + preBlockHeader.preBlockHash + preBlockHeader.merkleRoot)) {
+            return false;
+        }
 		// Kiểm tra thời gian ký trễ nhất của preBlockHeader
-		// và thời gian ký nhanh nhất của blockHeader cách nhau một khoảng thời gian t
-		// Kiểm tra node thu thập (creator) đã tích lũy đủ điểm chưa
-		// Kiểm tra node thu thập không nằm trong top đặt cọc (không phải node xác nhận)
-		// Kiểm tra thời gian ký trễ nhất của blockHeader có sớm hơn thời gian hiện tại không
+        // và thời gian ký nhanh nhất của blockHeader cách nhau một khoảng thời gian t
+        var msg1 = JSON.parse(preBlockHeader.validatorSigns[preBlockHeader.validatorSigns.length - 1]).message;
+        var msg2 = JSON.parse(blockHeader.validatorSigns[0]).message;
+        if (msg2.timeStamp - msg1.timeStamp < Const.blockDuration) {
+            return false;
+        }
+        // Kiểm tra node thu thập (creator) đã tích lũy đủ điểm chưa
+        var pubKeyCreator = JSON.parse(blockHeader.creatorSign.message).pubKey;
+        
+        // Kiểm tra node thu thập không nằm trong top đặt cọc (không phải node xác nhận)
+        var msg3 = JSON.parse(blockHeader.creatorSign).message;
+        if (this.walletArray.indexOf(Crypto.Sha256(msg3.pubKey)) != -1) {
+            return false;
+        }
+        // Kiểm tra thời gian ký trễ nhất của blockHeader có sớm hơn thời gian hiện tại không
+        var msg4 = JSON.parse(blockHeader.validatorSigns[blockHeader.validatorSigns.length - 1]).message;
+        if (Date.now() - msg4.timeStamp < 0) {
+            return false;
+        }
 		// Kiểm tra tất cả những node ký tên của blockHeader nằm trong top 100 đặt cọc của hệ thống
 		// Kiểm tra những node ký tên preBlockHeader có ký tên blockHeader không (ký 2 block liên tiếp)
+
+        return true;
 	}
 
 	/**
@@ -364,7 +410,11 @@ class BlockChain {
 	 * @param {string} pubKeyHash: pubKeyHash của wallet cần cập nhật
 	 */
 	UpdateWallet(pubKeyHash) {
-		// Xóa pubKeyHash khỏi mảng walletArray
+        // Xóa pubKeyHash khỏi mảng walletArray
+        var i = this.walletArray.indexOf(pubKeyHash);
+        if (i != -1) {
+            this.walletArray.splice(i, 1);
+        }
 		// Thêm pubKeyHash vào lại mảng walletArray (làm tương tự như insertion sort, giá trị so sánh là tổng số tiền mà wallet đã đặt cọc (truy xuất thông qua walletDictionary))
 	}
 
@@ -374,8 +424,11 @@ class BlockChain {
 	 * @param {BlockData} blockData: blockData của block cần thêm
 	 */
 	AddBlock(blockHeader, blockData) {
-		// Thêm blockHeader vào mảng headers
-		// Ghi blockHeader, blockData vào cơ sở dữ liệu
+        // Thêm blockHeader vào mảng headers
+        this.headers.push(blockHeader);
+        // Ghi blockHeader, blockData vào cơ sở dữ liệu
+        BlockHeaderDB.put(blockHeader.index, blockHeader);
+        BlockDataDB.put(Crypto.Sha256(blockHeader.index + blockHeader.merkleRoot + blockHeader.preBlockHash), blockData);
 		// Cập nhật lại unSpentOutputs của các wallet
 		// Nếu trong các giao dịch có thông điệp đặt cọc, thông điệp rút cọc hoặc thông điệp được thưởng của node thu thập thì cập nhật lại depositBlockIndex của wallet đó
 		// Cập nhật lại index của các wallet trong mảng walletArray
@@ -385,8 +438,9 @@ class BlockChain {
 	 * Lấy ra mảng pubKeyHash của các wallet có đặt cọc nhiều nhất
 	 * @returns {Array}: mảng pubKeyHash của các wallet có đặt cọc nhiều nhất
 	 * */
-	GetTopWallets() {
-		return [];
+    GetTopWallets() {
+        var top = this.walletArray.slice(0, Const.N);
+        return top;
 	}
 
 	/**
@@ -394,8 +448,14 @@ class BlockChain {
 	 * @param {string} pubKeyHash: pubKeyHash của node cần kiểm tra
 	 * @returns {boolean}: kết quả kiểm tra
 	 */
-	IsOnTop(pubKeyHash) {
-		return true;
+    IsOnTop(pubKeyHash) {
+        var top = this.walletArray.slice(0, Const.N);
+        if (top.indexOf(pubKeyHash) != -1) {
+            return true;
+        }
+        else {
+            return false;
+        }
 	}
 
 	/**
@@ -405,10 +465,18 @@ class BlockChain {
 	 * @returns {number}: số điểm đã tích cóp được của wallet
 	 */
 	CalculatePoint(depositBlockIndex, totalDeposit) {
-		// Lấy blockHeader của block gần nhất đã đặt cọc
-		// Lấy thời gian hiện tại trừ cho thời gian của block mới lấy
-		// Lấy kết quả nhân với số tiền đã đặt cọc
-		return 0;
+        // Lấy blockHeader của block gần nhất đã đặt cọc
+        var blockHeader;
+        for (var i = 0; i < this.headers.length; i++) {
+            if (this.headers[i].index == depositBlockIndex) {
+                blockHeader = this.headers[i];
+                break;
+            }
+        }
+        // Lấy thời gian hiện tại trừ cho thời gian của block mới lấy
+        var time = Date.now() - blockHeader.timeStamp;
+        // Lấy kết quả nhân với số tiền đã đặt cọc
+        return time * totalDeposit;
 	}
 
 	/**
@@ -417,12 +485,35 @@ class BlockChain {
 	 * @returns {number}: thời gian phải chờ thêm, nếu không có đặt cọc thì trả về -1
 	 */
 	GetTimeMustWait(pubKeyHash) {
-		// Tính tổng số tiền mà wallet này đã đặt cọc
+        // Tính tổng số tiền mà wallet này đã đặt cọc
+        var wallet = this.walletDictionary[pubKeyHash];
+        var total = 0;
+        for (var i = 0; i < wallet.unSpentOutputs.length; i++) {
+            if (wallet.unSpentOutputs[i].isLocked) {
+                total += wallet.unSpentOutputs[i].money;
+            }
+        }
 		// Lấy thời gian hiện tại trừ cho thời gian của block khi wallet này đặt cọc
-		// Lấy kết quả nhân với số tiền đã đặt cọc
-		// Lấy số điểm cần thiết trừ cho kết quả vừa tính, sau đó đem chia cho số tiền đã đặt cọc
-		// Trả về kết quả vừa tính, nếu < 0  thì trả về 0
-		return 0;
+        var blockHeader;
+        for (var i = 0; i < this.headers.length; i++) {
+            if (this.headers[i].index == wallet.depositBlockIndex) {
+                blockHeader = this.headers[i];
+                break;
+            }
+        }
+        var time = Date.now() - blockHeader.timeStamp;
+
+        // Lấy kết quả nhân với số tiền đã đặt cọc
+        var temp = total * time;
+        // Lấy số điểm cần thiết trừ cho kết quả vừa tính, sau đó đem chia cho số tiền đã đặt cọc
+        var result = (Const.needPoint - temp) / total;
+        // Trả về kết quả vừa tính, nếu < 0  thì trả về 0
+        if (result < 0) {
+            return 0;
+        }
+        else {
+            return result;
+        }
 	}
 
 	/**
