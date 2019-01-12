@@ -3,10 +3,16 @@
   "version": "0.0.0",
   "description": "DNSServer",
   "main": "server.js",
-  "author": {
-    "name": ""
-  },
+  "author": "",
   "dependencies": {
     "websocket": "^1.0.28"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "devDependencies": {},
+  "license": "ISC",
+  "engines": {
+    "node": "10.x"
   }
 }

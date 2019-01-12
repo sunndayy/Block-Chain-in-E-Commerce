@@ -48,7 +48,7 @@ function GetKey() {
  * @returns {string}
  */
 function GetPubKeyHash(privKey) {
-	return "";
+	return ec.keyFromPrivate(privKey).getPublic('hex');
 }
 
 module.exports = { Sha256, Sign, Verify, GetKey, GetPubKeyHash };
