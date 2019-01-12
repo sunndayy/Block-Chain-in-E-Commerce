@@ -204,11 +204,7 @@ class BlockData {
             }
         }
 
-        for (var i = 0; i < this.transactions.length; i++) {
-            for (var j = 0; j < this.transactions[i].txIns; j++) {
-
-            }
-        }
+        totalInput = totalOutput * (1 + Const.k);
 
         reward = totalInput - totalOutput;
 
@@ -624,7 +620,7 @@ class BlockChain {
         // Cập nhật lại unSpentOutputs của các wallet
         for (var i = 0; i < blockData.transactions.length; i++) {
             var wallet = this.walletDictionary[Crypto.Sha256(blockData.transactions[i].senderSign.pubKey)];
-            for (var j = 0; j < blockData.transactions[i].txIns; j++) {
+            for (var j = 0; j < blockData.transactions[i].txIns.length; j++) {
                 for (var k = 0; k < wallet.unSpentOutputs.length; k++) {
                     if (blockData.transactions[i].txIns[j].preHashTx == wallet.unSpentOutputs[k].preHashTx) {
                         wallet.unSpentOutputs.splice(k, 1);
@@ -632,12 +628,12 @@ class BlockChain {
                 }
             }
 
-            for (var j = 0; j < blockData.transactions[i].txOuts; j++) {
+            for (var j = 0; j < blockData.transactions[i].txOuts.length; j++) {
                 var walletRecv = this.walletDictionary[blockData.transactions[i].txOuts[j].pubKeyHash];
                 //preHashTx, outputIndex, money, isLocked
                 var obj = {
-                    preHashTx: '',
-                    outputIndex: blockData.transactions[i].txOuts[j].outputIndex,
+                    preHashTx: Crypto.Sha256(JSON.stringify(blockData.transactions[i])),
+                    outputIndex: j,
                     money: blockData.transactions[i].txOuts[j].money,
                     isLocked: blockData.transactions[i].txOuts[j].isLocked
                 };
