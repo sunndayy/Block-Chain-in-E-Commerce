@@ -12,4 +12,4 @@ const peersFile = "./Data/peers.txt";
 const nextBlockFile = "./Data/nextBlockFile.txt";
 const privKeyFile = "./Data/privKey.txt";
 const urlFile = "./Data/url.txt";
-module.exports = { N, n, nTx, consensusDuration, blockDuration, needPoint, systemPort, trustedPeers, dnsServer, peersFile, nextBlockFile, privKeyFile, urlFile };
+module.exports = { N, n, nTx, consensusDuration, blockDuration, needPoint, reward, systemPort, trustedPeers, dnsServer, peersFile, nextBlockFile, privKeyFile, urlFile };

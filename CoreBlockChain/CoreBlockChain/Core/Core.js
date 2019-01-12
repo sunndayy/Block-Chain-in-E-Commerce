@@ -1,9 +1,6 @@
 ﻿const Crypto = require('./Crypto.js');
 const Const = require('./Const.js');
-var level = require('level');
-var BlockHeaderDB = level('./BlockHeaderDB', { valueEncoding: 'json' });
-var BlockDataDB = level('./BlockDataDB', { valueEncoding: 'json' });
-var WalletDB = level('./WalletDB', { valueEncoding: 'json' });
+const level = require('level');
 
 
 class Wallet {
@@ -13,7 +10,7 @@ class Wallet {
 	 */
 	constructor(pubKeyHash) {
 		this.pubKeyHash = pubKeyHash;
-		this.unSpentOutputs = []; // Mảng chứa các input chưa sử dụng của wallet
+		this.unSpentOutputs = []; // Mảng chứa các input chưa sử dụng của wallet, {preHashTx, outputIndex, money, isLocked}
 		this.depositBlockIndex = -1; // Index của block gần nhất mà wallet có thực hiện đặt cọc, rút cọc, hay thu thập block mới
 	}
 
@@ -207,6 +204,12 @@ class BlockData {
             }
         }
 
+        for (var i = 0; i < this.transactions.length; i++) {
+            for (var j = 0; j < this.transactions[i].txIns; j++) {
+
+            }
+        }
+
         reward = totalInput - totalOutput;
 
         var txOut = new TxOut({ pubKeyHash: pubKeyHash, money: reward, isLocked: false });
@@ -270,11 +273,12 @@ class BlockChain {
 		this.walletArray = []; // mảng pubKeyHash của các wallet sắp xếp theo tiền đặt cọc giảm dần (wallet đầu tiên đặt cọc nhiều nhất)
 		this.walletDictionary = {}; // dictionary với key là pubKeyHash của một wallet, value là đối tượng wallet tương ứng
         // Đọc dữ liệu từ levelDB, dựng lại mảng các header, cập nhật các wallet
+        var BlockHeaderDB = level('./BlockHeaderDB', { valueEncoding: 'json' });
+        var WalletDB = level('./WalletDB', { valueEncoding: 'json' });
+
         BlockHeaderDB.createReadStream().on('data', function (data) {
             this.headers.push(data.value);
-        }).on('error', function (err) {
-            console.log(err);
-            });
+        });
 
         WalletDB.createReadStream().on('data', function (data) {
             this.walletArray.push(data.key);
@@ -399,6 +403,7 @@ class BlockChain {
 	 */
     GetData(blockHeaderHash) {
         var blockData = null;
+        var BlockDataDB = level('./BlockDataDB', { valueEncoding: 'json' });
         BlockDataDB.get(blockHeaderHash, function (err, value) {
             if (err) {
                 if (err.notFound) {
@@ -417,10 +422,50 @@ class BlockChain {
 	 * @returns {boolean}: kết quả kiểm tra
 	 */
 	ValidateTransaction(transaction) {
-		// Kiểm tra tất cả input tồn tại
-		// Kiểm tra tất cả input không bị khóa (nếu bị khóa thì chỉ có thể gửi lại cho chính mình (rút cọc))
-		// Kiểm tra totalInput = k*totalOutput (k > 1, bao gồm cả tiền thưởng cho các node thu thập)
-		return true;
+        // Kiểm tra tất cả input tồn tại
+        var wallet = this.walletDictionary[Crypto.Sha256(transaction.senderSign.pubKey)];
+        var flag = true;
+        for (var i = 0; i < transaction.txIns.length; i++) {
+            var check = false;
+            for (var j = 0; j < wallet.unSpentOutputs.length; j++) {
+                if (transaction.txIns[i].preHashTx == wallet.unSpentOutputs[j].preHashTx) {
+                    check = true;
+                    break;
+                }
+            }
+            if (check == false) {
+                flag = false;
+                break;
+            }
+        }
+        // Kiểm tra tất cả input không bị khóa (nếu bị khóa thì chỉ có thể gửi lại cho chính mình (rút cọc))
+        for (var i = 0; i < transaction.txIns.length; i++) {
+            if (transaction.txIns[i].isLocked) {
+                var check = false;
+                for (var j = 0; j < transaction.txOuts.length; j++) {
+                    if (Crypto.Sha256(transaction.senderSign.pubKey) == transaction.txOuts[j].pubKeyHash) {
+                        check = true;
+                        break;
+                    }
+                }
+                if (check == false) {
+                    flag = false;
+                    break;
+                }
+            }
+        }
+        // Kiểm tra totalInput = k*totalOutput (k > 1, bao gồm cả tiền thưởng cho các node thu thập)
+        var totalInput = 0, totalOuput = 0;
+
+        for (var i = 0; i < transaction.txOuts.length; i++) {
+            totalOuput += transaction.txOuts[i].money;
+        }
+
+        if (totalInput / totalOuput <= 1) {
+            flag = false;
+        }
+
+        return flag;
 	}
 
 	/**
@@ -435,11 +480,60 @@ class BlockChain {
 		// phần thưởng cho node thu thập(bằng phần dư ra trong các transaction) - 
 		// phần thưởng cho các node xác nhận đã ký tên(1 giao dịch, nhiều output)
 		// Kiểm tra merkleRoot của blockData (không gồm phần thưởng cho các node xác nhận đã ký tên)
-		// và merkleRoot của blockHeader có đúng không
-		// Kiểm tra blockData có hợp lệ không
-		// Kiểm tra số tiền thưởng của node thu thập có bằng phần dư ra của các transaction không
-		// Kiểm tra trong blockData có thưởng cho các node xác nhận đã ký tên không
-		return true;
+        // và merkleRoot của blockHeader có đúng không
+        if (blockData.MerkleRoot() != blockHeader.merkleRoot) {
+            return false;
+        }
+        var flag = true;
+        // Kiểm tra blockData có hợp lệ không
+        for (var i = 0; i < Const.nTx; i++) {
+            if (!this.ValidateTransaction(blockData.transactions[i])) {
+                flag = false;
+                break;
+            }
+        }
+        // Kiểm tra số tiền thưởng của node thu thập có bằng phần dư ra của các transaction không
+        var totalInput = 0, totalOutput = 0;
+ 
+        for (var i = 0; i < Const.nTx; i++) {
+            for (var j = 0; j < blockData.transactions[i].txOuts.length; j++) {
+                totalOutput += blockData.transactions[i].txOuts[j].money;
+            }
+
+            var wallet = this.walletDictionary[Crypto.Sha256(blockData.transactions[i].senderSign.pubKey)];
+            for (var j = 0; j < blockData.transactions[i].txIns.length; j++) {
+                for (var k = 0; k < wallet.unSpentOutputs.length; k++) {
+                    if (blockData.transactions[i].txIns[j].preHashTx == wallet.unSpentOutputs[k].preHashTx) {
+                        totalInput += wallet.unSpentOutputs[k].money;
+                    }
+                }
+            }
+        }
+        var reward = blockData.transactions[Const.nTx].txOuts[0].money;
+        if (reward != (totalInput - totalOutput)) {
+            flag = false;
+        }
+        // Kiểm tra trong blockData có thưởng cho các node xác nhận đã ký tên không
+        var tmp1 = [], tmp2 = [];
+        for (var i = 0; i < blockHeader.validatorSigns.length; i++) {
+            tmp1.push(Crypto.Sha256(blockHeader.validatorSigns[i].pubKey));
+        }
+        for (var i = 0; i < blockData.transactions[Const.nTx + 1].txOuts.length; i++) {
+            tmp2.push(blockData.transactions[Const.nTx + 1].txOuts[i].pubKeyHash);
+        }
+        if (tmp1.length != tmp2.length) {
+            flag = false;
+        }
+        else {
+            for (var i = 0; i < tmp1.length; i++) {
+                if (tmp2.indexOf(tmp1[i]) == -1) {
+                    flag = false;
+                    break;
+                }
+            }
+        }
+
+        return flag;
 	}
 
 	GetUnSpentOutputs(pubKeyHash) {
@@ -460,7 +554,58 @@ class BlockChain {
         if (i != -1) {
             this.walletArray.splice(i, 1);
         }
-		// Thêm pubKeyHash vào lại mảng walletArray (làm tương tự như insertion sort, giá trị so sánh là tổng số tiền mà wallet đã đặt cọc (truy xuất thông qua walletDictionary))
+        // Thêm pubKeyHash vào lại mảng walletArray (làm tương tự như insertion sort, giá trị so sánh là tổng số tiền mà wallet đã đặt cọc (truy xuất thông qua walletDictionary))
+        if (this.walletArray.length == 0) {
+            this.walletArray.push(pubKeyHash);
+        }
+
+        var totalDepositA = 0, totalDepositB = 0, totalDepositC = 0;
+        var walletA, walletB, walletC;
+        walletA = this.walletDictionary[pubKeyHash];
+        for (var i = 0; i < walletA.unSpentOutputs.length; i++) {
+            if (walletA.unSpentOutputs[i].isLocked) {
+                totalDepositA += walletA.unSpentOutputs[i].money;
+            }
+        }
+        walletB = this.walletDictionary[this.walletArray[0]];
+        for (var i = 0; i < walletB.unSpentOutputs.length; i++) {
+            if (walletB.unSpentOutputs[i].isLocked) {
+                totalDepositB += walletB.unSpentOutputs[i].money;
+            }
+        }
+        if (totalDepositA > totalDepositB) {
+            this.walletArray.unshift(pubKeyHash);
+        }
+        walletB = this.walletDictionary[this.walletArray[this.walletArray.length - 1]];
+        for (var i = 0; i < walletB.unSpentOutputs.length; i++) {
+            if (walletB.unSpentOutputs[i].isLocked) {
+                totalDepositB += walletB.unSpentOutputs[i].money;
+            }
+        }
+        if (totalDepositA < totalDepositB) {
+            this.walletArray.push(pubKeyHash);
+        }
+
+        for (var i = 0; i < this.walletArray.length - 1; i++) {
+            walletB = this.walletDictionary[i];
+            walletC = this.walletDictionary[i + 1];
+
+            for (var j = 0; j < walletB.unSpentOutputs.length; j++) {
+                if (walletB.unSpentOutputs[j].isLocked) {
+                    totalDepositB += walletB.unSpentOutputs[j].money;
+                }
+            }
+
+            for (var j = 0; j < walletC.unSpentOutputs.length; j++) {
+                if (walletC.unSpentOutputs[j].isLocked) {
+                    totalDepositC += walletC.unSpentOutputs[j].money;
+                }
+            }
+
+            if (totalDepositA >= totalDepositB && totalDepositA <= totalDepositC) {
+                this.walletArray.splice(i + 1, 0, pubKeyHash);
+            }
+        }
 	}
 
 	/**
@@ -472,11 +617,63 @@ class BlockChain {
         // Thêm blockHeader vào mảng headers
         this.headers.push(blockHeader);
         // Ghi blockHeader, blockData vào cơ sở dữ liệu
+        var BlockHeaderDB = level('./BlockHeaderDB', { valueEncoding: 'json' });
+        var BlockDataDB = level('./BlockDataDB', { valueEncoding: 'json' });
         BlockHeaderDB.put(blockHeader.index, blockHeader);
         BlockDataDB.put(Crypto.Sha256(blockHeader.index + blockHeader.merkleRoot + blockHeader.preBlockHash), blockData);
-		// Cập nhật lại unSpentOutputs của các wallet
+        // Cập nhật lại unSpentOutputs của các wallet
+        for (var i = 0; i < blockData.transactions.length; i++) {
+            var wallet = this.walletDictionary[Crypto.Sha256(blockData.transactions[i].senderSign.pubKey)];
+            for (var j = 0; j < blockData.transactions[i].txIns; j++) {
+                for (var k = 0; k < wallet.unSpentOutputs.length; k++) {
+                    if (blockData.transactions[i].txIns[j].preHashTx == wallet.unSpentOutputs[k].preHashTx) {
+                        wallet.unSpentOutputs.splice(k, 1);
+                    }
+                }
+            }
+
+            for (var j = 0; j < blockData.transactions[i].txOuts; j++) {
+                var walletRecv = this.walletDictionary[blockData.transactions[i].txOuts[j].pubKeyHash];
+                //preHashTx, outputIndex, money, isLocked
+                var obj = {
+                    preHashTx: '',
+                    outputIndex: blockData.transactions[i].txOuts[j].outputIndex,
+                    money: blockData.transactions[i].txOuts[j].money,
+                    isLocked: blockData.transactions[i].txOuts[j].isLocked
+                };
+                walletRecv.push(obj);
+            }
+        }
 		// Nếu trong các giao dịch có thông điệp đặt cọc, thông điệp rút cọc hoặc thông điệp được thưởng của node thu thập thì cập nhật lại depositBlockIndex của wallet đó
 		// Cập nhật lại index của các wallet trong mảng walletArray
+        this.walletArray.sort(function (a, b) {
+            var totalDepositA = 0; totalDepositB = 0;
+
+            var walletA = this.walletDictionary[a];
+            var walletB = this.walletDictionary[b];
+
+            for (var i = 0; i < walletA.unSpentOutputs.length; i++) {
+                if (walletA.unSpentOutputs[i].isLocked) {
+                    totalDepositA += walletA.unSpentOutputs[i].money;
+                }
+            }
+
+            for (var i = 0; i < walletB.unSpentOutputs.length; i++) {
+                if (walletB.unSpentOutputs[i].isLocked) {
+                    totalDepositB += walletB.unSpentOutputs[i].money;
+                }
+            }
+
+            if (totalDepositA > totalDepositB) {
+                return -1;
+            }
+            if (totalDepositA < totalDepositB) {
+                return 1;
+            }
+            if (totalDepositA = totalDepositB) {
+                return 0;
+            }
+        });
 	}
 
 	/**
