@@ -273,8 +273,8 @@ class BlockChain {
 		this.walletArray = []; // mảng pubKeyHash của các wallet sắp xếp theo tiền đặt cọc giảm dần (wallet đầu tiên đặt cọc nhiều nhất)
 		this.walletDictionary = {}; // dictionary với key là pubKeyHash của một wallet, value là đối tượng wallet tương ứng
         // Đọc dữ liệu từ levelDB, dựng lại mảng các header, cập nhật các wallet
-        var BlockHeaderDB = level('./BlockHeaderDB', { valueEncoding: 'json' });
-        var WalletDB = level('./WalletDB', { valueEncoding: 'json' });
+        var BlockHeaderDB = level('../Data/BlockHeaderDB', { valueEncoding: 'json' });
+        var WalletDB = level('../Data/WalletDB', { valueEncoding: 'json' });
 
         BlockHeaderDB.createReadStream().on('data', function (data) {
             this.headers.push(data.value);
@@ -403,7 +403,7 @@ class BlockChain {
 	 */
     GetData(blockHeaderHash) {
         var blockData = null;
-        var BlockDataDB = level('./BlockDataDB', { valueEncoding: 'json' });
+        var BlockDataDB = level('../Data/BlockDataDB', { valueEncoding: 'json' });
         BlockDataDB.get(blockHeaderHash, function (err, value) {
             if (err) {
                 if (err.notFound) {
@@ -617,8 +617,8 @@ class BlockChain {
         // Thêm blockHeader vào mảng headers
         this.headers.push(blockHeader);
         // Ghi blockHeader, blockData vào cơ sở dữ liệu
-        var BlockHeaderDB = level('./BlockHeaderDB', { valueEncoding: 'json' });
-        var BlockDataDB = level('./BlockDataDB', { valueEncoding: 'json' });
+        var BlockHeaderDB = level('../Data/BlockHeaderDB', { valueEncoding: 'json' });
+        var BlockDataDB = level('../Data/BlockDataDB', { valueEncoding: 'json' });
         BlockHeaderDB.put(blockHeader.index, blockHeader);
         BlockDataDB.put(Crypto.Sha256(blockHeader.index + blockHeader.merkleRoot + blockHeader.preBlockHash), blockData);
         // Cập nhật lại unSpentOutputs của các wallet
@@ -644,7 +644,21 @@ class BlockChain {
                 walletRecv.push(obj);
             }
         }
-		// Nếu trong các giao dịch có thông điệp đặt cọc, thông điệp rút cọc hoặc thông điệp được thưởng của node thu thập thì cập nhật lại depositBlockIndex của wallet đó
+        // Nếu trong các giao dịch có thông điệp đặt cọc, thông điệp rút cọc hoặc thông điệp được thưởng của node thu thập thì cập nhật lại depositBlockIndex của wallet đó
+        for (var i = 0; i < blockData.transactions.length; i++) {
+            for (var j = 0; j < blockData.transactions[i].txOuts.length; j++) {
+                if (blockData.transactions[i].txOuts[j].pubKeyHash == Crypto.Sha256(blockData.transactions[i].senderSign.pubKey)) {
+                    var WalletTemp = this.walletDictionary[blockData.transactions[i].txOuts[j].pubKeyHash];
+                    WalletTemp.depositBlockIndex = blockHeader.index;
+                }
+            }
+            if (i == blockData.transactions.length - 1) {
+                for (var j = 0; j < blockData.transactions[i].txOuts.length; j++) {
+                    var WalletTemp = this.walletDictionary[blockData.transactions[i].txOuts[j].pubKeyHash];
+                    WalletTemp.depositBlockIndex = blockHeader.index;
+                }
+            }
+        }
 		// Cập nhật lại index của các wallet trong mảng walletArray
         this.walletArray.sort(function (a, b) {
             var totalDepositA = 0; totalDepositB = 0;

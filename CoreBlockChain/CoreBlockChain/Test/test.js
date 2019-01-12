@@ -386,3 +386,53 @@
 // */
 
 
+// var Core = require('../Core/Core.js');
+// var Crypto = require('../Core/Crypto.js');
+// const level = require('level');
+// var BlockHeaderDB = level('../Data/BlockHeaderDB', { valueEncoding: 'json' });
+// var BlockDataDB = level('../Data/BlockDataDB', { valueEncoding: 'json' });
+// var WalletDB = level('../Data/WalletDB', { valueEncoding: 'json' });
+
+
+// var txOut1 = {
+//    pubKeyHash: 'e39bf5e92e5a35a62cf72f64bc12fab226e6eca8daa58747fa0af3ee0773d455',
+//    money: 5000,
+//    isLocked: false
+// }
+
+// var txOut2 = {
+//    pubKeyHash: '781407c9eccbb2ffb51de7e8421696b998bbe14c0414bfbb8c590d791d62d0c0',
+//    money: 5000,
+//    isLocked: false
+// }
+
+// var tx = {
+//    txIns: [],
+//    txOuts: [txOut1, txOut2]
+// }
+
+// var genesisHeader = {
+//    index: 0,
+//    preBlockHash: '',
+//    merkleRoot: '',
+//    validatorSigns: [],
+//    creatorSigns: []
+// };
+
+// var genesisData = {
+//    transactions: [tx]
+// }
+
+// BlockHeaderDB.put(genesisHeader.index, genesisHeader);
+// BlockDataDB.put(Crypto.Sha256(genesisHeader.index + genesisHeader.preBlockHash + genesisHeader.merkleRoot), genesisData);
+
+// var BobPri = '7b98d8cfd3b458dd30520ada1b1ffb7bb8314f8eeb395905d62beb42f6911a99'
+// var AlicePri = '27f7d394f58de4ef0bc189506f94d58ed3d656a86824207d63e63785a498ac1e'
+
+// var BobPub = '04dc3ecf42b0fb67c5f7d571848e9013be8d4fee8f5c8c67c60bb55c8afbd2d6afe892b10179e074175f988db2bcb9e6eeb1b6fd7fc1535ec1b91ac5ef24b1438f'
+// var AlicePub = '042fcdd4286ce5b5d66e6aab39ad7ae130e78242e2377f151586a9f1e70caaa3a7b1a277c8178a88f4ae048737cc8fb12d6ca444e8cfadceaa652e1990226b0414'
+
+// console.log(Crypto.Sha256(BobPub));
+// console.log(Crypto.Sha256(AlicePub));
+
+
