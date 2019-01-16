@@ -1,4 +1,4 @@
-﻿const N = 2;
+﻿﻿const N = 2;
 const n = 1;
 const nTx = 1;
 const k = 0.01;
