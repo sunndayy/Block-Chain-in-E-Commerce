@@ -1,0 +1,137 @@
+include ../layout/header.pug
+.container-fluid
+  .row.row-offcanvas.row-offcanvas-right
+    .col-xs-12.col-sm-10.col-sm-push-2
+      include ../layout/slide.pug
+      section.group_cat_home
+        .container-fluid
+          .row
+            .group_title_1
+              .row
+                .col-md-4.col-sm-4.col-xs-12
+                  h3.name-group
+                    a.title-name-group(href='#' style='pointer-events: none;') Th&ocirc;ng tin s&#x1EA3;n ph&#x1EA9;m
+            each item in items
+              .list_pro
+                .item_pro
+                  .img_pro
+                    .img
+                      a(href='#' style='pointer-events: none;')
+                        img(src= item.image alt='')
+                  .top_pro
+                    h3
+                      a(href='#' style='pointer-events: none;')
+                      | #{item.name}
+                    .price_pro.text-center
+                      span.price_sale #{item.price}
+                        sup &dstrok;
+              .col-md-9.col-sm-9.col-xs-12
+                ul.list-group.history-list-group
+                  a(href='#' style='pointer-events: none;')
+                    li.list-group-item
+                      | L&#x1B0;&#x1EE3;t xem: #{item.views}
+                      br
+                      | L&#x1B0;&#x1EE3;t b&aacute;n: #{item.sells}
+                      br
+                      | Mô tả: #{item.description}
+                      br
+                      | Xu&#x1EA5;t x&#x1EE9;: #{item.origin}
+                      br
+                      | Lo&#x1EA1;i: #{item.nameType}
+                      br
+                      | Nh&agrave; xu&#x1EA5;t b&#x1EA3;n: #{item.nameCompany}
+              if (isLogged)
+                .clearfix
+                .viewmore-section
+                  a#addToCart(href='/cart/myCart/?addItemId=' + item.id)
+                    span Th&ecirc;m v&agrave;o gi&#x1ECF; h&agrave;ng
+      section#same-type.group_cat_home
+        .container-fluid
+          .row
+            .group_title_1
+              .row
+                .col-md-4.col-sm-4.col-xs-12
+                  h3.name-group
+                    a.title-name-group(href='#' style='pointer-events: none;') S&aacute;ch c&ugrave;ng th&#x1EC3; lo&#x1EA1;i
+            .list_pro.same_type_book
+              each sameType in sameTypes
+                .item_pro
+                  a(href='./' + sameType.id)
+                    .top_pro.hover_top
+                      h3= sameType.name
+                      .price_pro.text-center
+                        span.price_sale
+                          | #{sameType.price}
+                          sup &dstrok;
+                  .img_pro
+                    .img
+                      a(href='./' + sameType.id)
+                        img(src= sameType.image alt='')
+                  .top_pro
+                    h3
+                      a(href='./' + sameType.id)
+                      | #{sameType.name}
+                    .price_pro.text-center
+                      span.price_sale= sameType.price
+                        sup &dstrok;
+                  a(href='./' + sameType.id)
+                    .short_pro
+                      ul
+                        li
+                          | L&#x1B0;&#x1EE3;t xem: #{sameType.views}
+                        li
+                          | L&#x1B0;&#x1EE3;t b&aacute;n: #{sameType.sells}
+                        li
+                          | Mô tả: #{sameType.description}
+                        li
+                          | Xu&#x1EA5;t x&#x1EE9;: #{sameType.origin}
+                        li
+                          | Lo&#x1EA1;i: #{sameType.nameType}
+                        li
+                          | Nh&agrave; xu&#x1EA5;t b&#x1EA3;n #{sameType.nameCompany}
+      section#same-company.group_cat_home
+        .container-fluid
+          .row
+            .group_title_1
+              .row
+                .col-md-4.col-sm-4.col-xs-12
+                  h3.name-group
+                    a.title-name-group(href='#' style='pointer-events: none;') S&aacute;ch c&ugrave;ng nh&agrave; xu&#x1EA5;t b&#x1EA3;n
+            .list_pro.same_company_book
+              each sameCompany in sameCompanys
+                .item_pro
+                  a(href='./' + sameCompany.id)
+                    .top_pro.hover_top
+                      h3= sameCompany.name
+                      .price_pro.text-center
+                        span.price_sale
+                          | #{sameCompany.price}
+                          sup &dstrok;
+                  .img_pro
+                    .img
+                      a(href='./' + sameCompany.id)
+                        img(src= sameCompany.image alt='')
+                  .top_pro
+                    h3
+                      a(href='./' + sameCompany.id)
+                      | #{sameCompany.name}
+                    .price_pro.text-center
+                      span.price_sale= sameCompany.price
+                        sup &dstrok;
+                  a(href='./' + sameCompany.id)
+                    .short_pro
+                      ul
+                        li
+                          | L&#x1B0;&#x1EE3;t xem: #{sameCompany.views}
+                        li
+                          | L&#x1B0;&#x1EE3;t b&aacute;n: #{sameCompany.sells}
+                        li
+                          | Mô tả: #{sameCompany.description}
+                        li
+                          | Xu&#x1EA5;t x&#x1EE9;: #{sameCompany.origin}
+                        li
+                          | Lo&#x1EA1;i: #{sameCompany.nameType}
+                        li
+                          | Nh&agrave; xu&#x1EA5;t b&#x1EA3;n #{sameCompany.nameCompany}
+    include ../layout/sidebar.pug
+include ../layout/footer.pug

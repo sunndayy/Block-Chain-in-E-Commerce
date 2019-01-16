@@ -1,0 +1,28 @@
+doctype html
+head
+  title &Dstrok;&abreve;ng nh&#x1EAD;p
+  meta(charset='utf-8')
+  meta(name='viewport' content='width=device-width, initial-scale=1')
+  link(rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css')
+  link(rel='stylesheet' type='text/css' href='/css/bootstrap.min.css')
+  script(type='text/javascript' src='/js/jquery.min.js')
+  script(type='text/javascript' src='/js/bootstrap.min.js')
+  link(rel='stylesheet' type='text/css' href='/css/login.css')
+  link(rel='shortcut icon' type='image/x-icon' href='/images/ic_book.png')
+#wrap.container
+  .row
+    .col-md-6.col-md-offset-3
+      if (message)
+        h4 #{message}
+      form.form(action='/users/logIn' method='post' accept-charset='utf-8' role='form')
+        legend &Dstrok;&abreve;ng nh&#x1EAD;p
+        input.form-control.input-lg(type='text' name='email' value='' placeholder='Nhập Email')
+        input.form-control.input-lg(type='password' name='password' value='' placeholder='Nhập Password')
+        button.btn.btn-lg.btn-primary.btn-block.signup-btn(type='submit')
+          | &Dstrok;&abreve;ng nh&#x1EAD;p
+  .row(style='margin-top: 15px;')
+    .col-md-12.control
+      div(style='border-top: 1px solid#888; padding-top:15px; font-size:85%; width: 50%; text-align: center; margin: 0 auto;')
+        | Don&apos;t have an account! 
+        a(href='/users/signUp')
+          | Sign Up Here

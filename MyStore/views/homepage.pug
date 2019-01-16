@@ -1,0 +1,37 @@
+include ./layout/header.pug
+.container-fluid
+  .row.row-offcanvas.row-offcanvas-right
+    .col-xs-12.col-sm-10.col-sm-push-2
+      include ./layout/slide.pug
+      section.group_cat_home
+        .container-fluid
+          .row
+            .group_title_1
+              .row
+                .col-md-4.col-sm-4.col-xs-12
+                  h3.name-group
+                    a.title-name-group(href='#' style='pointer-events: none;') S&aacute;ch m&#x1EDB;i v&#x1EC1;
+            .list_pro.new_book
+              include ./products/homepage/new_products.pug
+      section.group_cat_home
+        .container-fluid
+          .row
+            .group_title_1
+              .row
+                .col-md-4.col-sm-4.col-xs-12
+                  h3.name-group
+                    a.title-name-group(href='#' style='pointer-events: none;') S&aacute;ch b&aacute;n ch&#x1EA1;y nh&#x1EA5;t
+            .list_pro.hot_book
+              include ./products/homepage/hot_products.pug
+      section.group_cat_home
+        .container-fluid
+          .row
+            .group_title_1
+              .row
+                .col-md-4.col-sm-4.col-xs-12
+                  h3.name-group
+                    a.title-name-group(href='#' style='pointer-events: none;') S&aacute;ch xem nhi&#x1EC1;u nh&#x1EA5;t
+            .list_pro.trend_book
+              include ./products/homepage/trend_products.pug
+    include ./layout/sidebar.pug
+include ./layout/footer.pug

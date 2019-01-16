@@ -1,0 +1,40 @@
+include ../../layout/header.pug
+.container-fluid
+  .row.row-offcanvas.row-offcanvas-right
+    .col-xs-12.col-sm-10.col-sm-push-2
+      include ../../layout/slide.pug
+      section.group_cat_home
+        .container-fluid
+          .row
+            .group_title_1
+              .row
+                .col-md-4.col-sm-4.col-xs-12
+                  h3.name-group
+                    a.title-name-group(href='#' style='pointer-events: none;') #{companyBook}
+            .list_pro.company_book
+              include publishing_company_products.pug
+            if (items.length > 0)
+              .clearfix
+              .viewmore-section
+                a.view_more(href='#view_more_company')
+                  span
+                    | Xem th&ecirc;m s&#x1EA3;n ph&#x1EA9;m 
+                    i.fa.fa-angle-double-right
+                ul#view_more_company.pagination.pagination-lg.my-pagination.hide
+                  each page_number in page_numbers
+                    if (page_number.isCurPage)
+                      li
+                        a.company_page_number.company_active_page(href='/products/publishing_companys/?companyPage=' + page_number.value)
+                          span= page_number.value
+                    else
+                      li
+                        a.company_page_number(href='/products/publishing_companys/?companyPage=' + page_number.value)
+                          span= page_number.value
+            else
+              .clearfix
+              .viewmore-section
+                a.view_more(href='#' style='pointer-events: none; background: #fb005b; color: #fff;')
+                  span
+                    | Không có sản phẩm nào trong danh mục này
+    include ../../layout/sidebar.pug
+include ../../layout/footer.pug
