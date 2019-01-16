@@ -1,437 +1,437 @@
-﻿const Crypto = require('./Crypto.js');
-const Const = require('./Const.js');
-var level = require('level');
-var BlockHeaderDB = level('./BlockHeaderDB', { valueEncoding: 'json' });
-var BlockDataDB = level('./BlockDataDB', { valueEncoding: 'json' });
-var WalletDB = level('./WalletDB', { valueEncoding: 'json' });
-
-
+﻿const Crypto = require("./Crypto");
+const Const = require("./Const");
+const level = require("level");
+const db = level(Const.db, { valueEncoding: "json" });
 class Wallet {
-	/**
-	 * Hàm khởi tạo wallet
-	 * @param {string} pubKeyHash: public key hash của wallet
-	 */
 	constructor(pubKeyHash) {
 		this.pubKeyHash = pubKeyHash;
-		this.unSpentOutputs = []; // Mảng chứa các input chưa sử dụng của wallet
-		this.depositBlockIndex = -1; // Index của block gần nhất mà wallet có thực hiện đặt cọc, rút cọc, hay thu thập block mới
+		this.utxos = [];
+		this.depositBlockIndex = -1;
 	}
-
-	GetUnSpentOutputs() {
-		return this.unSpentOutputs;
+	GetUtxos() {
+		return this.utxos;
+	}
+	GetTotalDeposit() {
+		var totalDeposit = 0;
+		for (var i = 0; i < this.utxos.length; i++) {
+			if (this.utxos[i].isLocked) {
+				totalDeposit += this.utxos[i].money;
+			}
+		}
+		return totalDeposit;
+	}
+	GetTotalMoney() {
+		var totalMoney = 0;
+		for (var i = 0; i < this.utxos.length; i++) {
+			totalMoney += this.utxos[i].money;
+		}
+		return totalMoney;
 	}
 }
-
 class TxIn {
-	/**
-	 * Hàm khởi tạo txIn
-	 * @param {JSON} obj: đối tượng JSON chứa thông tin của txIn bao gồm preHashTx và outputIndex
-	 */
 	constructor(obj) {
 		this.preHashTx = obj.preHashTx;
 		this.outputIndex = obj.outputIndex;
 	}
 }
-
 class TxOut {
-	/**
-	 * Hàm khởi tạo txOut
-	 * @param {JSON} obj: đối tượng JSON chứa thông tin của txOut bao gồm pubKeyHash của wallet có thể sử dụng txOut này, money, isLocked (true/false, nếu true có nghĩa là input này dùng để đặt cọc và không thể giao dịch)
-	 */
 	constructor(obj) {
 		this.pubKeyHash = obj.pubKeyHash;
 		this.money = obj.money;
 		this.isLocked = obj.isLocked;
 	}
 }
-
-class Transaction {
-	/**
-	 * Hàm khởi tạo transaction
-	 * @param {JSON} obj: đối tượng JSON chứa thông tin của transaction bao gồm mảng txIn, mảng txOut, 
-	 * chữ ký của node thực hiện (không ký trên txIn nữa, chỉ ký 1 lần trên transaction) 
-	 */
+class Tx {
 	constructor(obj) {
 		this.txIns = obj.txIns;
 		this.txOuts = obj.txOuts;
 		this.senderSign = obj.senderSign;
 	}
-
-	/**
-	 * Ký tên lên giao dịch (gán giá trị cho thành phần senderSign)
-	 * @param {string} privKey: private key của node gửi
-	 */
-    Sign(privKey) {
-        var message = JSON.stringify(this.txIns) + JSON.stringify(this.txOuts);
-        this.senderSign = Crypto.Sign(privKey, message);
+	CalculateFee() {
+		var totalMoney = 0;
+		var senderPubKeyHash = Crypto.Sha256(this.senderSign.pubKey);
+		for (var i = 0; i < this.txOuts.length; i++) {
+			if (this.txOuts[i].pubKeyHash != senderPubKeyHash) {
+				totalMoney += this.txOuts[i].money;
+			}
+		}
+		return totalMoney * Const.k;
 	}
-
-	/**
-	 * Kiểm tra chữ ký có hợp lệ không (không cần kiểm tra các txIn có tồn tại không)
-	 * @returns {boolean}: kết quả kiểm tra
-	 * */
-    Verify() {
-        return Crypto.Verify(this.senderSign);
+	Sign(privKey) {
+		var message = {
+			txIns: this.txIns,
+			txOuts: this.txOuts
+		};
+		this.senderSign = Crypto.Sign(privKey, JSON.stringify(message));
+	}
+	Verify() {
+		var message = {
+			txIns: this.txIns,
+			txOuts: this.txOuts
+		};
+		return Crypto.Verify(this.senderSign)
+			&& this.senderSign.message == JSON.stringify(message);
 	}
 }
-
 class BlockHeader {
-	/**
-	 * Hàm khởi tạo blockHeader
-	 * @param {JSON} obj: đối tượng JSON chứa các thông tin của blockHeader bao gồm index, preBlockHash, 
-	 * merkleRoot, validatorSigns (mảng các chữ ký của các node xác nhận, thông tin cần ký bao gồm preBlockHash, 
-	 * merkleRoot, timeStamp (thời gian lúc ký, tính bằng milisecond), isAgreed (true/false, có đồng ý hay không)),
-	 * creatorSign (chữ ký của node thu thập, nội dung ký là danh sách các node xác nhận đã ký tên)
-	 */
 	constructor(obj) {
 		this.index = obj.index;
-		this.preBlockHash = obj.preBlockHash;
 		this.merkleRoot = obj.merkleRoot;
+		this.preBlockHash = obj.preBlockHash;
 		this.validatorSigns = obj.validatorSigns;
 		this.creatorSign = obj.creatorSign;
 	}
-
-	/**
-	 * Kiểm tra các chữ ký của node xác nhận có được sắp xếp tăng dần theo thời gian ký không
-	 * Kiểm tra chữ ký và nội dung ký của các node xác nhận có đúng và hợp lệ không
-	 * Kiểm tra chữ ký và nội dung ký của node thu thập có đúng và hợp lệ không
-	 * @returns {boolean}: kết quả kiểm tra
-	 * */
-    Verify() {
-        var flag = true;
-
-        for (var i = 0; i < this.validatorSigns.length - 1; i++) {
-            var msg1 = JSON.parse(this.validatorSigns[i].message);
-            var msg2 = JSON.parse(this.validatorSigns[i + 1].message);
-            if (msg1.timeStamp > msg2.timeStamp) {
-                flag = false;
-                break;
-            }
-        }
-
-        for (var i = 0; i < this.validatorSigns.length; i++) {
-            if (!Crypto.Verify(this.validatorSigns[i])) {
-                flag = false;
-                break;
-            }
-            if (JSON.parse(this.validatorSigns[i].message).isAgreed == false) {
-                flag = false;
-                break;
-            }
-        }
-
-        if (!Crypto.Verify(this.creatorSign)) {
-            flag = false;
-        }
-
-        return flag;
+	ValidateSign(sign) {
+		if (Crypto.Verify(sign)) {
+			var message = JSON.parse(sign.message);
+			return message.isAgreed
+				&& message.index == this.index
+				&& message.merkleRoot == this.merkleRoot
+				&& message.preBlockHash == this.preBlockHash;
+		}
+		return false;
 	}
-
-	/**
-	 * Trả về thời gian tạo của block này (thời gian ký trễ nhất trong những node xác nhận)
-	 * @returns {number}: thời gian ký trễ nhất tính theo milisecond
-	 * */
-    GetTimeStamp() {
-        var message = JSON.parse(this.validatorSigns[this.validatorSigns.length - 1].message);
-        return message.timeStamp;
+	Verify() {
+		for (var i = 0; i < this.validatorSigns.length; i++) {
+			if (!this.ValidateSign(this.validatorSigns[i])) {
+				return false;
+			}
+		}
+		var validatorPubKeyHashes = this.validatorSigns.map(sign => {
+			return Crypto.Sha256(sign.pubKey);
+		});
+		if (!Crypto.Verify(this.creatorSign)
+			|| this.creatorSign.message != JSON.stringify(validatorPubKeyHashes)) {
+			return false;
+		}
+		return true;
 	}
-
-	/**
-	 * Thêm chữ ký của node xác nhận vào danh sách validatorSigns (thêm theo kiểu insertion sort, sắp xếp tăng dần theo thời gian ký)
-	 * @param {JSON} signature: chữ ký của node xác nhận
-	 */
-    AddSignature(signature) {
-        if (this.validatorSigns.length == 0) {
-            this.validatorSigns.push(signature);
-            return;
-        }
-
-        var timeStamp = JSON.parse(signature.message).timeStamp;
-
-        if (timeStamp <= JSON.parse(this.validatorSigns[0].message).timeStamp) {
-            this.validatorSigns.unshift(signature);
-            return;
-        }
-
-        if (timeStamp >= JSON.parse(this.validatorSigns[this.validatorSigns.length - 1].message).timeStamp) {
-            this.validatorSigns.push(signature);
-            return;
-        }
-
-        for (var i = 0; i < this.validatorSigns.length - 1; i++) {
-            if (timeStamp >= JSON.parse(this.validatorSigns[i].message).timeStamp
-                && timeStamp <= JSON.parse(this.validatorSigns[i + 1].message).timeStamp) {
-                this.validatorSigns.splice(i + 1, 0, signature);
-            }
-        }
-
+	GetTimeStamp() {
+		if (this.index <= 1) {
+			return 0;
+		}
+		var message = JSON.parse(this.validatorSigns[Const.n - 1].message);
+		return message.timeStamp;
 	}
-
-	/**
-	 * node thu thập ký tên thưởng cho những node xác nhận 
-	 * (nội dung ký: mảng các pubKeyHash của những node xác nhận đã ký tên)
-	 * gán chữ ký cho biến creatorSign
-	 * @param {string} privKey: private key của node thu thập
-	 */
 	Sign(privKey) {
-        var pubKeyHashs = [];
-        for (var i = 0; i < this.validatorSigns.length; i++) {
-            var pubKey = this.validatorSigns[i].pubKey;
-            pubKeyHashs.push(Crypto.Sha256(pubKey));
-        }
-        this.creatorSign = Crypto.Sign(privKey, JSON.stringify(pubKeyHashs));
+		var validatorPubKeyHashes = this.validatorSigns.map(sign => {
+			return Crypto.Sha256(sign.pubKey);
+		});
+		this.creatorSign = Crypto.Sign(privKey, JSON.stringify(validatorPubKeyHashes));
+	}
+	GetHash() {
+		return Crypto.Sha256(JSON.stringify(this));
 	}
 }
-
 class BlockData {
-	/**
-	 * Hàm khởi tạo blockData
-	 * @param {Array} transactions: mảng các transaction trong blockData
-	 */
-	constructor(transactions) {
-		this.transactions = transactions;
+	constructor(txs) {
+		this.txs = [];
+		for (var i = 0; i < txs.length; i++) {
+			this.txs.push(new Tx(txs[i]));
+		}
 	}
-
-	/**
-	 * Tạo 1 giao dịch và thêm vào danh sách transactions để thưởng cho node thu thập
-	 * Giá trị thưởng bằng chênh lệch giữa tổng các input và output của tất cả transaction trong blockData
-	 * @param {string} pubKeyHash: pubKeyHash của node thu thập
-     * 0 input, 1 output
-	 */
-    AddCreatorReWard(pubKeyHash) {
-        var reward = 0;
-        var txOut = new TxOut({ pubKeyHash: pubKeyHash, money: reward, isLocked: false });
-        var tx = new Transaction({ txIns: [], txOuts: [txOut], senderSign: null });
-        this.transactions.push(tx);
+	AddCreatorReWard(pubKeyHash) {
+		var reward = 0;
+		for (var i = 0; i < Const.nTx; i++) {
+			reward += this.txs[i].CalculateFee();
+		}
+		var tx = new Tx({
+			txOuts: [{
+				pubKeyHash: pubKeyHash,
+				money: reward
+			}]
+		});
+		this.txs.push(tx);
 	}
-
-	/**
-	 * Tạo 1 giao dịch và thêm vào danh sách transactions để thưởng cho tất cả node xác nhận đã ký tên
-	 * 0 input, nhiều output
-     * Giá trị thưởng là hằng số
-	 * @param {Array} validatorPubKeyHashes: mảng pubKeyHash của các node xác nhận
-	 */
 	AddValidatorRewards(validatorPubKeyHashes) {
-        var txOuts = [];
-        for (var i = 0; i < validatorPubKeyHashes.length; i++) {
-            var txOut = new TxOut({ pubKeyHash: validatorPubKeyHashes[i], money: Const.reward, isLocked: false });
-            txOuts.push(txOut);
-        }
-        var tx = new Transaction({ txIns: [], txOuts: txOuts, senderSign: null });
-        this.transactions.push(tx);
+		var txOuts = [];
+		for (var i = 0; i < validatorPubKeyHashes.length; i++) {
+			var txOut = new TxOut({
+				pubKeyHash: validatorPubKeyHashes[i],
+				money: Const.reward
+			});
+			txOuts.push(txOut);
+		}
+		var tx = new Tx({ txOuts: txOuts });
+		this.txs.push(tx);
 	}
-
-    MerkleRoot() {
-        if (this.transactions.length == 0) {
-            return '';
-        }
-
-        var tmp1 = [];
-        for (var i = 0; i < Const.nTx + 1; i++) {
-            tmp1.push(Crypto.Sha256(JSON.stringify(this.transactions[i])));
-        }
-
-        while (tmp1.length > 1) {
-            var tmp2 = [];
-            for (var i = 0; i < tmp1.length; i = i + 2) {
-                var h1 = tmp[i];
-                var h2;
-                if (i == tmp1.length - 1) {
-                    h2 = h1;
-                }
-                else {
-                    h2 = tmp1[i + 1];
-                }
-                var h = Crypto.Sha256(h1 + h2);
-                tmp2.push(h);
-            }
-            tmp1 = tmp2;
-        }
-
+	MerkleRoot() {
+		if (this.txs.length == 0) {
+			return '';
+		}
+		var tmp1 = [];
+		for (var i = 0; i < Const.nTx + 1 && i < this.txs.length; i++) {
+			tmp1.push(Crypto.Sha256(JSON.stringify(this.txs[i])));
+		}
+		while (tmp1.length > 1) {
+			var tmp2 = [];
+			for (var i = 0; i < tmp1.length; i = i + 2) {
+				var h1 = tmp1[i];
+				var h2;
+				if (i == tmp1.length - 1) {
+					h2 = h1;
+				}
+				else {
+					h2 = tmp1[i + 1];
+				}
+				var h = Crypto.Sha256(h1 + h2);
+				tmp2.push(h);
+			}
+			tmp1 = tmp2;
+		}
 		return tmp1[0];
 	}
 }
-
 class BlockChain {
-	/**
-	 * Hàm khởi tạo blockChain
-	 * */
 	constructor() {
-		this.headers = []; // mảng các header của các block
-		this.walletArray = []; // mảng pubKeyHash của các wallet sắp xếp theo tiền đặt cọc giảm dần (wallet đầu tiên đặt cọc nhiều nhất)
-		this.walletDictionary = {}; // dictionary với key là pubKeyHash của một wallet, value là đối tượng wallet tương ứng
-        // Đọc dữ liệu từ levelDB, dựng lại mảng các header, cập nhật các wallet
-        BlockHeaderDB.createReadStream().on('data', function (data) {
-            this.headers.push(data.value);
-        }).on('error', function (err) {
-            console.log(err);
-            });
-
-        WalletDB.createReadStream().on('data', function (data) {
-            this.walletArray.push(data.key);
-            this.walletDictionary[data.key] = data.value;
-        })
-
+		this.headers = [];
+		this.walletArray = [];
+		this.walletDictionary = {};
 	}
-
+	Initiate(cb) {
+		var tmpArray = [];
+		var blockChain = this;
+		db.createReadStream().
+			on("data", data => {
+				tmpArray.push(data.value);
+			})
+			.on("end", () => {
+				tmpArray.sort((a, b) => {
+					return a.blockHeader.index - b.blockHeader.index;
+				});
+				for (var i = 0; i < tmpArray.length; i++) {
+					var blockHeader = new BlockHeader(tmpArray[i].blockHeader);
+					var blockData = new BlockData(tmpArray[i].blockData.txs);
+					blockChain.AddBlock(blockHeader, blockData);
+				}
+				cb();
+			});
+	}
 	GetHeader(index) {
 		if (index < this.headers.length) {
 			return this.headers[index];
 		}
 		return null;
 	}
-
-	/**
-	 * Kiểm tra blockHeader có hợp lệ không
-	 * @param {BlockHeader} blockHeader: blockHeader cần kiểm tra
-	 * @param {BlockHeader} preBlockHeader: blockHeader của block liền trước
-	 * @returns {boolean}: kết quả kiểm tra
-	 */
 	ValidateBlockHeader(blockHeader, preBlockHeader) {
 		if (!blockHeader.Verify()) {
 			return false;
 		}
-		// Kiểm tra index, preBlockHash của blockHeader có phải của preBlockHeader không
-		// Kiểm tra thời gian ký trễ nhất của preBlockHeader
-		// và thời gian ký nhanh nhất của blockHeader cách nhau một khoảng thời gian t
-		// Kiểm tra node thu thập (creator) đã tích lũy đủ điểm chưa
-		// Kiểm tra node thu thập không nằm trong top đặt cọc (không phải node xác nhận)
-		// Kiểm tra thời gian ký trễ nhất của blockHeader có sớm hơn thời gian hiện tại không
-		// Kiểm tra tất cả những node ký tên của blockHeader nằm trong top 100 đặt cọc của hệ thống
-		// Kiểm tra những node ký tên preBlockHeader có ký tên blockHeader không (ký 2 block liên tiếp)
-	}
-
-	/**
-	 * Lấy dữ liệu của blockData theo blockHeaderHash từ levelDB
-	 * @param {string} blockHeaderHash: blockHeaderHash của block cần lấy data
-	 * @returns {BlockData}: blockData tương ứng với blockHeaderHash, nếu không có thì trả về null
-	 */
-    GetData(blockHeaderHash) {
-        var blockData = null;
-        BlockDataDB.get(blockHeaderHash, function (err, value) {
-            if (err) {
-                if (err.notFound) {
-                    return;
-                }
-            }
-
-            blockData = value;
-        });
-        return blockData;
-	}
-
-	/**
-	 * Kiểm tra transaction có hợp lệ không
-	 * @param {Transaction} transaction: transaction cần kiểm tra
-	 * @returns {boolean}: kết quả kiểm tra
-	 */
-	ValidateTransaction(transaction) {
-		// Kiểm tra tất cả input tồn tại
-		// Kiểm tra tất cả input không bị khóa (nếu bị khóa thì chỉ có thể gửi lại cho chính mình (rút cọc))
-		// Kiểm tra totalInput = k*totalOutput (k > 1, bao gồm cả tiền thưởng cho các node thu thập)
+		if (blockHeader.validatorSigns.length != Const.n) {
+			return false;
+		}
+		for (var i = 0; i < Const.n - 1; i++) {
+			var message1 = JSON.parse(blockHeader.validatorSigns[i].message);
+			var message2 = JSON.parse(blockHeader.validatorSigns[i + 1].message);
+			if (message1.timeStamp > message2.timeStamp) {
+				return false;
+			}
+		}
+		if (blockHeader.index != preBlockHeader.index + 1) {
+			return false;
+		}
+		if (blockHeader.preBlockHash != preBlockHeader.GetHash()) {
+			return false;
+		}
+		if (preBlockHeader.validatorSigns) {
+			var msg = JSON.parse(blockHeader.validatorSigns[0].message);
+			if (msg.timeStamp - preBlockHeader.GetTimeStamp() < Const.blockDuration) {
+				return false;
+			}
+			for (var i = 0; i < Const.n; i++) {
+				for (var j = 0; j < Const.n; j++) {
+					if (preBlockHeader.validatorSigns[i].pubKey == blockHeader.validatorSigns[j].pubKey) {
+						return false;
+					}
+				}
+			}
+		}
+		var creatorPubKeyHash = Crypto.Sha256(blockHeader.creatorSign.pubKey);
+		var creatorWallet = this.walletDictionary[creatorPubKeyHash];
+		if (creatorWallet) {
+			if (this.CalculatePoint(creatorWallet.depositBlockIndex, blockHeader.GetTimeStamp(), creatorWallet.GetTotalDeposit()) < Const.needPoint) {
+				return false;
+			}
+		} else {
+			return false;
+		}
+		if (this.IsOnTop(creatorPubKeyHash)) {
+			return false;
+		}
+		for (var i = 0; i < Const.n; i++) {
+			var pubKey = blockHeader.validatorSigns[i].pubKey;
+			if (!this.IsOnTop(Crypto.Sha256(pubKey))) {
+				return false;
+			}
+		}
 		return true;
 	}
-
-	/**
-	 * Kiểm tra blockData có hợp lệ và đúng với blockHeader không
-	 * @param {BlockData} blockData: blockData cần kiểm tra
-	 * @param {BlockHeader} blockHeader: blockHeader của blockData
-	 * @returns {boolean}: kết quả kiểm tra
-	 */
+	GetData(blockHeaderHash, cb) {
+		db.get(blockHeaderHash, (err, value) => {
+			if (err) {
+				console.log(err);
+				cb(null);
+			} else {
+				cb(value.blockData);
+			}
+		});
+	}
+	ValidateTx(tx) {
+		if (!tx.Verify()) {
+			return false;
+		};
+		var wallet = this.walletDictionary[Crypto.Sha256(tx.senderSign.pubKey)];
+		if (wallet) {
+			var totalInput = 0;
+			for (var i = 0; i < tx.txIns.length; i++) {
+				var utxo = wallet.utxos.find(utxo => {
+					return utxo.preHashTx == tx.txIns[i].preHashTx
+						&& utxo.outputIndex == tx.txIns[i].outputIndex;
+				});
+				if (utxo) {
+					totalInput += utxo.money;
+				} else {
+					return false;
+				}
+			}
+			var totalOutput = 0;
+			for (var i = 0; i < tx.txOuts.length; i++) {
+				totalOutput += tx.txOuts[i].money;
+			}
+			if (totalInput - totalOutput != tx.CalculateFee()) {
+				return false;
+			}
+			return true;
+		}
+		return false;
+	}
 	ValidateBlockData(blockData, blockHeader) {
-		// Ghi chú: thứ tự trong các giao dịch trong blockData là 
-		// transactions - 
-		// phần thưởng cho node thu thập(bằng phần dư ra trong các transaction) - 
-		// phần thưởng cho các node xác nhận đã ký tên(1 giao dịch, nhiều output)
-		// Kiểm tra merkleRoot của blockData (không gồm phần thưởng cho các node xác nhận đã ký tên)
-		// và merkleRoot của blockHeader có đúng không
-		// Kiểm tra blockData có hợp lệ không
-		// Kiểm tra số tiền thưởng của node thu thập có bằng phần dư ra của các transaction không
-		// Kiểm tra trong blockData có thưởng cho các node xác nhận đã ký tên không
+		if (blockData.MerkleRoot() != blockHeader.merkleRoot) {
+			return false;
+		}
+		if (blockData.txs.length != Const.nTx + 2) {
+			return false;
+		}
+		var reward = 0;
+		for (var i = 0; i < Const.nTx; i++) {
+			if (!this.ValidateTx(blockData.txs[i])) {
+				return false;
+			}
+			reward += blockData.txs[i].CalculateFee();
+		}
+		if (reward != blockData.txs[Const.nTx].txOuts[0].money) {
+			return false;
+		}
+		var tmp1 = blockHeader.validatorSigns.map(sign => {
+			return Crypto.Sha256(sign.pubKey);
+		});
+		var tmp2 = blockData.txs[Const.nTx + 1].txOuts.map(txOut => {
+			return txOut.pubKeyHash;
+		});
+		if (tmp1.length != tmp2.length) {
+			return false;
+		}
+		for (var i = 0; i < tmp1.length; i++) {
+			if (tmp2.indexOf(tmp1[i]) < 0) {
+				return false;
+			}
+		}
 		return true;
 	}
-
-	GetUnSpentOutputs(pubKeyHash) {
+	GetUtxos(pubKeyHash) {
 		var wallet = this.walletDictionary[pubKeyHash];
 		if (wallet) {
-			return wallet.unSpentOutputs;
+			return wallet.utxos;
 		}
-		return null;
-	}
-
-	/**
-	 * Cập nhật lại index của wallet trong mảng wallet
-	 * @param {string} pubKeyHash: pubKeyHash của wallet cần cập nhật
-	 */
-	UpdateWallet(pubKeyHash) {
-		// Xóa pubKeyHash khỏi mảng walletArray
-		// Thêm pubKeyHash vào lại mảng walletArray (làm tương tự như insertion sort, giá trị so sánh là tổng số tiền mà wallet đã đặt cọc (truy xuất thông qua walletDictionary))
-	}
-
-	/**
-	 * Thêm 1 block vào chuỗi blockChain
-	 * @param {BlockHeader} blockHeader: blockHeader của block cần thêm
-	 * @param {BlockData} blockData: blockData của block cần thêm
-	 */
-	AddBlock(blockHeader, blockData) {
-		// Thêm blockHeader vào mảng headers
-		// Ghi blockHeader, blockData vào cơ sở dữ liệu
-		// Cập nhật lại unSpentOutputs của các wallet
-		// Nếu trong các giao dịch có thông điệp đặt cọc, thông điệp rút cọc hoặc thông điệp được thưởng của node thu thập thì cập nhật lại depositBlockIndex của wallet đó
-		// Cập nhật lại index của các wallet trong mảng walletArray
-	}
-
-	/**
-	 * Lấy ra mảng pubKeyHash của các wallet có đặt cọc nhiều nhất
-	 * @returns {Array}: mảng pubKeyHash của các wallet có đặt cọc nhiều nhất
-	 * */
-	GetTopWallets() {
 		return [];
 	}
-
-	/**
-	 * Kiểm tra một node có nằm trong top của hệ thống không
-	 * @param {string} pubKeyHash: pubKeyHash của node cần kiểm tra
-	 * @returns {boolean}: kết quả kiểm tra
-	 */
+	GetTotalMoney(pubKeyHash) {
+		var wallet = this.walletDictionary[pubKeyHash];
+		if (wallet) {
+			return wallet.GetTotalMoney();
+		}
+		return 0;
+	}
+	AddBlock(blockHeader, blockData) {
+		this.headers.push(blockHeader);
+		db.get(blockHeader.GetHash(), (err, value) => {
+			if (err) {
+				db.put(blockHeader.GetHash(), {
+					blockHeader: blockHeader,
+					blockData: blockData
+				});
+			}
+		});
+		for (var i = 0; i < blockData.txs.length; i++) {
+			if (blockData.txs[i].txIns) {
+				var wallet = this.walletDictionary[Crypto.Sha256(blockData.txs[i].senderSign.pubKey)];
+				for (var j = 0; j < blockData.txs[i].txIns.length; j++) {
+					var utxo = wallet.utxos.find(utxo => {
+						return utxo.preHashTx == blockData.txs[i].txIns[j].preHashTx
+							&& utxo.outputIndex == blockData.txs[i].txIns[j].outputIndex;
+					});
+					wallet.utxos.splice(wallet.utxos.indexOf(utxo), 1);
+				}
+			}
+			for (var j = 0; j < blockData.txs[i].txOuts.length; j++) {
+				var recvPubKeyHash = blockData.txs[i].txOuts[j].pubKeyHash;
+				if (!this.walletDictionary[recvPubKeyHash]) {
+					this.walletDictionary[recvPubKeyHash] = new Wallet(recvPubKeyHash);
+					this.walletArray.push(recvPubKeyHash);
+				}
+				var walletRecv = this.walletDictionary[recvPubKeyHash];
+				var obj = {
+					preHashTx: Crypto.Sha256(JSON.stringify(blockData.txs[i])),
+					outputIndex: j,
+					money: blockData.txs[i].txOuts[j].money,
+					isLocked: blockData.txs[i].txOuts[j].isLocked
+				};
+				walletRecv.utxos.push(obj);
+				if (obj.isLocked) {
+					walletRecv.depositBlockIndex = blockHeader.index;
+				}
+			}
+		}
+		if (blockHeader.creatorSign) {
+			var creatorWallet = this.walletDictionary[Crypto.Sha256(blockHeader.creatorSign.pubKey)];
+			creatorWallet.depositBlockIndex = blockHeader.index;
+		}
+		var blockChain = this;
+		this.walletArray.sort(function (a, b) {
+			return blockChain.walletDictionary[b].GetTotalDeposit() - blockChain.walletDictionary[a].GetTotalDeposit();
+		});
+		console.log("So du moi: ");
+		var allKeys = Object.keys(this.walletDictionary);
+		for (var i = 0; i < allKeys.length; i++) {
+			console.log(allKeys[i] + ": " + this.walletDictionary[allKeys[i]].GetTotalMoney());
+		}
+		console.log();
+	}
+	GetTopWallets() {
+		return this.walletArray.slice(0, Const.N);
+	}
 	IsOnTop(pubKeyHash) {
-		return true;
+		return this.GetTopWallets().indexOf(pubKeyHash) >= 0;
 	}
-
-	/**
-	 * Tính điểm cho một wallet
-	 * @param {number} depositBlockIndex: index của block gần nhất mà wallet đã đặt cọc
-	 * @param {number} totalDeposit: tổng số tiền đặt cọc
-	 * @returns {number}: số điểm đã tích cóp được của wallet
-	 */
-	CalculatePoint(depositBlockIndex, totalDeposit) {
-		// Lấy blockHeader của block gần nhất đã đặt cọc
-		// Lấy thời gian hiện tại trừ cho thời gian của block mới lấy
-		// Lấy kết quả nhân với số tiền đã đặt cọc
-		return 0;
+	CalculatePoint(depositBlockIndex, currentTime, totalDeposit) {
+		var blockHeader = this.headers[depositBlockIndex];
+		var time = (currentTime - blockHeader.GetTimeStamp();
+		return time * totalDeposit;
 	}
-
-	/**
-	 * Tính thời gian phải chờ của 1 wallet
-	 * @param {string} pubKeyHash
-	 * @returns {number}: thời gian phải chờ thêm, nếu không có đặt cọc thì trả về -1
-	 */
 	GetTimeMustWait(pubKeyHash) {
-		// Tính tổng số tiền mà wallet này đã đặt cọc
-		// Lấy thời gian hiện tại trừ cho thời gian của block khi wallet này đặt cọc
-		// Lấy kết quả nhân với số tiền đã đặt cọc
-		// Lấy số điểm cần thiết trừ cho kết quả vừa tính, sau đó đem chia cho số tiền đã đặt cọc
-		// Trả về kết quả vừa tính, nếu < 0  thì trả về 0
-		return 0;
+		var wallet = this.walletDictionary[pubKeyHash];
+		if (wallet) {
+			var totalDeposit = wallet.GetTotalDeposit();
+			if (totalDeposit > 0) {
+				var depositBlockIndex = this.walletDictionary[pubKeyHash].depositBlockIndex;
+				var totalPoint = this.CalculatePoint(depositBlockIndex, (new Date()).getTime(), totalDeposit);
+				return (Const.needPoint - totalPoint) / totalDeposit;
+			}
+		}
+		return 3600000;
 	}
-
-	/**
-	 * Lấy độ dài chuỗi blockChain
-	 * @returns {number}: độ dài chuỗi blockChain
-	 * */
 	GetLength() {
 		return this.headers.length;
 	}
 }
-
-module.exports = { Transaction, BlockHeader, BlockData, BlockChain };
+module.exports = { Tx, BlockHeader, BlockData, BlockChain };

@@ -31,7 +31,7 @@ function Sign(privKey, message) {
 function Verify(signature) {
     var key = ec.keyFromPublic(signature.pubKey, 'hex');
     var messageHash = sha256(signature.message, { asBytes: true });
-    return key.verify(messageHash, signature.signature.toDER());
+    return key.verify(messageHash, signature.signature);
 }
 
 /**
@@ -48,7 +48,7 @@ function GetKey() {
  * @returns {string}
  */
 function GetPubKeyHash(privKey) {
-	return ec.keyFromPrivate(privKey).getPublic('hex');
+	return sha256(ec.keyFromPrivate(privKey).getPublic('hex'));
 }
 
 module.exports = { Sha256, Sign, Verify, GetKey, GetPubKeyHash };

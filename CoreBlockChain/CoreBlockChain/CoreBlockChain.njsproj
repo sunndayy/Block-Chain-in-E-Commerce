@@ -41,7 +41,10 @@
     <Compile Include="Core\Protocol.js">
       <SubType>Code</SubType>
     </Compile>
+    <Content Include="Data\genesisBlock.json" />
+    <Content Include="Data\nextBlockFile.json" />
     <Content Include="Data\privKey.txt" />
+    <Content Include="Data\SampleKey.txt" />
     <Content Include="Data\url.txt" />
     <Content Include="package.json" />
     <Content Include="README.md" />
@@ -49,6 +52,7 @@
   <ItemGroup>
     <Folder Include="Core\" />
     <Folder Include="Data\" />
+    <Folder Include="Test\" />
   </ItemGroup>
   <!-- Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them. -->
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="False" />

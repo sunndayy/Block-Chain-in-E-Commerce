@@ -1,2 +1,3 @@
 'use strict';
-require("./Core/Protocol")();
+var main = require("./Core/Protocol");
+main();
