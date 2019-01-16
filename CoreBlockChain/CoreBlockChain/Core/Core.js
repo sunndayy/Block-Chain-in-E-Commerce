@@ -45,6 +45,7 @@ class Tx {
 	constructor(obj) {
 		this.txIns = obj.txIns;
 		this.txOuts = obj.txOuts;
+		this.message = obj.message;
 		this.senderSign = obj.senderSign;
 	}
 	CalculateFee() {
@@ -60,17 +61,22 @@ class Tx {
 	Sign(privKey) {
 		var message = {
 			txIns: this.txIns,
-			txOuts: this.txOuts
+			txOuts: this.txOuts,
+			message: this.message
 		};
 		this.senderSign = Crypto.Sign(privKey, JSON.stringify(message));
 	}
 	Verify() {
 		var message = {
 			txIns: this.txIns,
-			txOuts: this.txOuts
+			txOuts: this.txOuts,
+			message: this.message
 		};
 		return Crypto.Verify(this.senderSign)
 			&& this.senderSign.message == JSON.stringify(message);
+	}
+	IsDepositTx() {
+		return this.txOuts.length == 1 && this.txOuts[0].pubKeyHash == Crypto.Sha256(this.senderSign.pubKey);
 	}
 }
 class BlockHeader {
@@ -282,6 +288,7 @@ class BlockChain {
 		};
 		var wallet = this.walletDictionary[Crypto.Sha256(tx.senderSign.pubKey)];
 		if (wallet) {
+			var isDepositTx = tx.IsDepositTx();
 			var totalInput = 0;
 			for (var i = 0; i < tx.txIns.length; i++) {
 				var utxo = wallet.utxos.find(utxo => {
@@ -289,6 +296,9 @@ class BlockChain {
 						&& utxo.outputIndex == tx.txIns[i].outputIndex;
 				});
 				if (utxo) {
+					if (utxo.isLocked && !isDepositTx) {
+						return false;
+					}
 					totalInput += utxo.money;
 				} else {
 					return false;
@@ -298,7 +308,7 @@ class BlockChain {
 			for (var i = 0; i < tx.txOuts.length; i++) {
 				totalOutput += tx.txOuts[i].money;
 			}
-			if (totalInput - totalOutput != tx.CalculateFee()) {
+			if (Math.abs(totalInput - totalOutput - tx.CalculateFee()) > 0.0000000001) {
 				return false;
 			}
 			return true;
@@ -319,7 +329,7 @@ class BlockChain {
 			}
 			reward += blockData.txs[i].CalculateFee();
 		}
-		if (reward != blockData.txs[Const.nTx].txOuts[0].money) {
+		if (Math.abs(reward - blockData.txs[Const.nTx].txOuts[0].money) > 0.0000000001) {
 			return false;
 		}
 		var tmp1 = blockHeader.validatorSigns.map(sign => {
@@ -372,6 +382,9 @@ class BlockChain {
 					});
 					wallet.utxos.splice(wallet.utxos.indexOf(utxo), 1);
 				}
+				if (blockData.txs[i].IsDepositTx()) {
+					wallet.depositBlockIndex = blockHeader.index;
+				}
 			}
 			for (var j = 0; j < blockData.txs[i].txOuts.length; j++) {
 				var recvPubKeyHash = blockData.txs[i].txOuts[j].pubKeyHash;
@@ -400,7 +413,7 @@ class BlockChain {
 		this.walletArray.sort(function (a, b) {
 			return blockChain.walletDictionary[b].GetTotalDeposit() - blockChain.walletDictionary[a].GetTotalDeposit();
 		});
-		console.log("So du moi: ");
+		console.log(blockHeader.index + "/");
 		var allKeys = Object.keys(this.walletDictionary);
 		for (var i = 0; i < allKeys.length; i++) {
 			console.log(allKeys[i] + ": " + this.walletDictionary[allKeys[i]].GetTotalMoney());
@@ -415,7 +428,7 @@ class BlockChain {
 	}
 	CalculatePoint(depositBlockIndex, currentTime, totalDeposit) {
 		var blockHeader = this.headers[depositBlockIndex];
-		var time = (currentTime - blockHeader.GetTimeStamp();
+		var time = currentTime - blockHeader.GetTimeStamp();
 		return time * totalDeposit;
 	}
 	GetTimeMustWait(pubKeyHash) {

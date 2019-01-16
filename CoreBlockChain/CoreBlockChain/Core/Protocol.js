@@ -121,24 +121,8 @@ function AddBlock(newBlock, preBlock) {
 	tmpBlocks = tmpBlocks.filter(block => {
 		return block.blockHeader.index > preBlock.blockHeader.index;
 	});
-	var usedUtxos = [];
-	for (var i = 0; i < preBlock.blockData.txs.length; i++) {
-		if (preBlock.blockData.txs[i].txIns) {
-			for (var j = 0; j < preBlock.blockData.txs[i].txIns.length; j++) {
-				usedUtxos.push(preBlock.blockData.txs[i].txIns[j]);
-			}
-		}
-	}
 	txPool = txPool.filter(tx => {
-		for (var i = 0; i < tx.txIns.length; i++) {
-			if (usedUtxos.find(utxo => {
-				return utxo.preHashTx == tx.txIns[i].preHashTx
-					&& utxo.outputIndex == tx.txIns[i].outputIndex
-			})) {
-				return false;
-			}
-		}
-		return true;
+		return myBlockChain.ValidateTx(tx);
 	});
 	preBlock.blockData.txs.forEach(tx => {
 		var concerners = [];
@@ -207,10 +191,7 @@ class Node {
 		this.followees = [];
 		this.connection.on("message", message => {
 			try {
-				console.log(this.url + " gui:");
 				message = JSON.parse(message.utf8Data);
-				console.log(message);
-				console.log();
 				this.HandleMessage(message);
 			} catch (err) {
 				console.log(err);
@@ -440,6 +421,7 @@ class Node {
 
 			case TX: {
 				var tx = new Tx(message.tx);
+				console.log(tx);
 				if (message.needBroadcasting) {
 					var allNodes = Object.values(nodes);
 					allNodes.forEach(node => {
