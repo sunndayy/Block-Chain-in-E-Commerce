@@ -19,7 +19,7 @@ exports.updateQuantity = (Book_Id, quantity) => {
 }
 
 exports.createOrder = (User_Id) => {
-	var sql = `INSERT INTO orders (user_id, status) VALUES (${User_Id}, 'Chưa giao')`;
+	var sql = `INSERT INTO orders (user_id, status, payStatus) VALUES (${User_Id}, 'Chưa giao', 'Chưa thanh toán')`;
 	return db.save(sql);
 }
 
@@ -49,6 +49,6 @@ exports.loadDetails = (Order_Id) => {
 }
 
 exports.updateOrderPayStatus = (Order_Id) => {
-	var sql = `UPDATE orders SET payStatus = 1 WHERE id = ${Order_Id}`;
+	var sql = `UPDATE orders SET payStatus = 'Đã thanh toán' WHERE id = ${Order_Id}`;
 	return db.save(sql);
 }
