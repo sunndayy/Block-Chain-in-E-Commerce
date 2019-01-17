@@ -47,3 +47,8 @@ exports.loadDetails = (Order_Id) => {
 	var sql = `SELECT books.id, books.image, books.name, books.price, order_items.quantity, orders.status, orders.date FROM books INNER JOIN order_items ON books.id = order_items.product_id INNER JOIN orders ON orders.id = order_items.order_id WHERE order_id = ${Order_Id}`;
 	return db.load(sql);
 }
+
+exports.updateOrderPayStatus = (Order_Id) => {
+	var sql = `UPDATE orders SET payStatus = 1 WHERE id = ${Order_Id}`;
+	return db.save(sql);
+}
