@@ -32,7 +32,7 @@ const ERROR = "error";
 // My info
 var myPrivKey = fs.readFileSync(Const.privKeyFile).toString();
 var myPubKeyHash = Crypto.GetPubKeyHash(myPrivKey);
-var myUrl = "localhost:" + Const.systemPort;
+var myUrl = fs.readFileSync(Const.urlFile).toString();
 
 var nodes = {};
 var myBlockChain = new BlockChain();
@@ -176,7 +176,6 @@ function AddBlock(newBlock, preBlock) {
 				console.log(err);
 			}
 			if (!myBlockChain.IsOnTop(myPubKeyHash)) {
-				console.log("Phai cho them: " + myBlockChain.GetTimeMustWait(myPubKeyHash));
 				timeout2 = setTimeout(() => {
 					CollectNewBlock();
 				}, myBlockChain.GetTimeMustWait(myPubKeyHash));
@@ -189,6 +188,7 @@ class Node {
 	constructor(connection) {
 		this.connection = connection;
 		this.followees = [];
+
 		this.connection.on("message", message => {
 			try {
 				message = JSON.parse(message.utf8Data);
@@ -197,18 +197,20 @@ class Node {
 				console.log(err);
 			}
 		});
+
 		this.connection.on("close", (reasonCode, description) => {
 			if (this.pubKeyHash) {
 				if (nodes[this.pubKeyHash]) {
 					delete nodes[this.pubKeyHash];
 				}
-				this.followees.forEach(followee => {
-					var index = followers[followee].indexOf(this);
-					if (index >= 0) {
-						followers[followee].splice(index, 1);
-					}
-				});
+				Connect(this.url);
 			}
+			this.followees.forEach(followee => {
+				var index = followers[followee].indexOf(this);
+				if (index >= 0) {
+					followers[followee].splice(index, 1);
+				}
+			});
 		});
 	}
 
@@ -421,7 +423,6 @@ class Node {
 
 			case TX: {
 				var tx = new Tx(message.tx);
-				console.log(tx);
 				if (message.needBroadcasting) {
 					var allNodes = Object.values(nodes);
 					allNodes.forEach(node => {
@@ -431,7 +432,8 @@ class Node {
 						});
 					});
 				}
-				if (myBlockChain.ValidateTx(tx)) {
+				var result = myBlockChain.ValidateTx(tx);
+				if (result == "Thanh cong") {
 					txPool.push(tx);
 					if (state == 1
 						&& myBlockChain.GetTimeMustWait(myPubKeyHash) <= 0
@@ -439,6 +441,11 @@ class Node {
 						CollectNewBlock();
 					}
 				}
+				this.Write({
+					header: "tx_result",
+					hashTx: Crypto.Sha256(JSON.stringify(tx)),
+					result: result
+				});
 				break;
 			}
 
@@ -579,7 +586,6 @@ function main() {
 	var server = http.createServer((req, res) => {
 	});
 	server.listen(Const.systemPort, () => {
-		console.log("Đang lắng nghe trên port " + Const.systemPort);
 	});
 	var wsServer = new WebSocketServer({
 		httpServer: server,

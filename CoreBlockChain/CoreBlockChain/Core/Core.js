@@ -261,9 +261,9 @@ class BlockChain {
 		} else {
 			return false;
 		}
-		if (this.IsOnTop(creatorPubKeyHash)) {
-			return false;
-		}
+		// if (this.IsOnTop(creatorPubKeyHash)) {
+		// 	return false;
+		// }
 		for (var i = 0; i < Const.n; i++) {
 			var pubKey = blockHeader.validatorSigns[i].pubKey;
 			if (!this.IsOnTop(Crypto.Sha256(pubKey))) {
@@ -284,7 +284,7 @@ class BlockChain {
 	}
 	ValidateTx(tx) {
 		if (!tx.Verify()) {
-			return false;
+			return "Chu ky khong hop le";
 		};
 		var wallet = this.walletDictionary[Crypto.Sha256(tx.senderSign.pubKey)];
 		if (wallet) {
@@ -297,11 +297,11 @@ class BlockChain {
 				});
 				if (utxo) {
 					if (utxo.isLocked && !isDepositTx) {
-						return false;
+						return "So tien su dung da bi lock";
 					}
 					totalInput += utxo.money;
 				} else {
-					return false;
+					return "TxIn khong ton tai";
 				}
 			}
 			var totalOutput = 0;
@@ -309,11 +309,11 @@ class BlockChain {
 				totalOutput += tx.txOuts[i].money;
 			}
 			if (Math.abs(totalInput - totalOutput - tx.CalculateFee()) > 0.0000000001) {
-				return false;
+				return "Khong du tien";
 			}
-			return true;
+			return "Thanh cong";
 		}
-		return false;
+		return "Tai khoan khong ton tai";
 	}
 	ValidateBlockData(blockData, blockHeader) {
 		if (blockData.MerkleRoot() != blockHeader.merkleRoot) {
