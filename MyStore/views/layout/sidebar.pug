@@ -1,0 +1,8 @@
+#sidebar.col-xs-6.col-sm-2.col-sm-pull-10.sidebar-offcanvas
+  .list-group
+    a.list-group-item.active.disabled(href='#' style='cursor: default; background-color: #fb005b; border-color: #fb005b') Th&#x1EC3; lo&#x1EA1;i
+    each type in types
+        a.list-group-item(href='/products/types/' + type.nameType) #{type.nameType}
+    a.list-group-item.active.disabled(href='#' style='cursor: default; background-color: #fb005b; border-color: #fb005b') C&ocirc;ng ty ph&aacute;t h&agrave;nh
+    each company in companys
+        a.list-group-item(href='/products/publishing_companys/' + company.nameCompany) #{company.nameCompany}

@@ -1,0 +1,40 @@
+include ../layout/header.pug
+.container-fluid
+  .row.row-offcanvas.row-offcanvas-right
+    .col-xs-12.col-sm-10.col-sm-push-2
+      include ../layout/slide.pug
+      section.group_cat_home
+        .container-fluid
+          .row
+            .group_title_1(style='margin-bottom: 20px;')
+              .row
+                .col-md-4.col-sm-4.col-xs-12
+                  h3.name-group
+                    a.title-name-group(href='#' style='pointer-events: none;') L&#x1ECB;ch s&#x1EED; mua h&agrave;ng
+            ul.list-group.history-list-group.history-page
+              include orders.pug
+            if (items.length > 0)
+              .clearfix
+              .viewmore-section
+                a.view_more(href='#view_more_history')
+                  span
+                    | Xem th&ecirc;m đơn hàng 
+                    i.fa.fa-angle-double-right
+                ul#view_more_history.pagination.pagination-lg.my-pagination.hide
+                  each page_number in page_numbers
+                    if (page_number.isCurPage)
+                      li
+                        a.history_page_number.history_active_page(href='/cart/viewHistory/page/?historyPage=' + page_number.value)
+                          span= page_number.value
+                    else
+                      li
+                        a.history_page_number(href='/cart/viewHistory/page/?historyPage=' + page_number.value)
+                          span= page_number.value
+            else
+              .clearfix
+              .viewmore-section
+                a.view_more(href='#' style='pointer-events: none; background: #fb005b; color: #fff;')
+                  span
+                    | Không có đơn hàng nào trong lịch sử mua hàng của bạn
+    include ../layout/sidebar.pug
+include ../layout/footer.pug

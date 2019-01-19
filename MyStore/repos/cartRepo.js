@@ -19,7 +19,7 @@ exports.updateQuantity = (Book_Id, quantity) => {
 }
 
 exports.createOrder = (User_Id) => {
-	var sql = `INSERT INTO orders (user_id, status, payStatus) VALUES (${User_Id}, 'Chưa giao', 'Chưa thanh toán')`;
+	var sql = `INSERT INTO orders (user_id, status) VALUES (${User_Id}, 'Chưa giao')`;
 	return db.save(sql);
 }
 
@@ -29,7 +29,7 @@ exports.getLastOrderId = (User_Id) => {
 }
 
 exports.getOrders = (User_Id, offset) => {
-	var sql = `SELECT orders.id, orders.date, orders.status, orders.payStatus, SUM(order_items.sum_price) as price, SUM(order_items.quantity) as amount FROM orders INNER JOIN order_items ON orders.id = order_items.order_id WHERE orders.user_id = ${User_Id} GROUP BY orders.id ORDER BY date DESC limit ${config.ORDERS_PER_PAGE} offset ${offset}`;
+	var sql = `SELECT orders.id, orders.date, orders.status, SUM(order_items.sum_price) as price, SUM(order_items.quantity) as amount FROM orders INNER JOIN order_items ON orders.id = order_items.order_id WHERE orders.user_id = ${User_Id} GROUP BY orders.id ORDER BY date DESC limit ${config.ORDERS_PER_PAGE} offset ${offset}`;
 	return db.load(sql);
 }
 
@@ -44,11 +44,6 @@ exports.insertOrderItem = (Order_Id, Product_Id, Quantity, Sum_Price) => {
 }
 
 exports.loadDetails = (Order_Id) => {
-	var sql = `SELECT books.id, books.image, books.name, books.price, order_items.quantity, orders.payStatus, orders.status, orders.date FROM books INNER JOIN order_items ON books.id = order_items.product_id INNER JOIN orders ON orders.id = order_items.order_id WHERE order_id = ${Order_Id}`;
+	var sql = `SELECT books.id, books.image, books.name, books.price, order_items.quantity, orders.status, orders.date FROM books INNER JOIN order_items ON books.id = order_items.product_id INNER JOIN orders ON orders.id = order_items.order_id WHERE order_id = ${Order_Id}`;
 	return db.load(sql);
-}
-
-exports.updateOrderPayStatus = (Order_Id) => {
-	var sql = `UPDATE orders SET payStatus = 'Đã thanh toán' WHERE id = ${Order_Id}`;
-	return db.save(sql);
 }

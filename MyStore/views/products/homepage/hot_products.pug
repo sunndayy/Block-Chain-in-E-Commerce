@@ -1,0 +1,41 @@
+each sellItem in sellItems
+  .item_pro
+    if (isLogged)
+      a(href='/products/details/' + sellItem.id)
+      .top_pro.hover_top
+        .viewmore-section
+          a#addToCart(style='background: #fb005b; color: #fff;' href='/cart/myCart/' + sellItem.id)
+            span Th&ecirc;m v&agrave;o gi&#x1ECF; h&agrave;ng
+    else
+      a(href='/products/details/' + sellItem.id)
+      .top_pro.hover_top
+        h3= sellItem.name
+        .price_pro.text-center
+          span.price_sale= sellItem.price
+            sup &dstrok;
+    .img_pro
+      .pan_pro.bg_hot hot
+      .img
+        a(href='/products/details/' + sellItem.id)
+          img(src= sellItem.image alt='')
+    .top_pro
+      h3
+        a(href='/products/details/' + sellItem.id)= sellItem.name
+      .price_pro.text-center
+        span.price_sale #{sellItem.price}
+          sup &dstrok;
+    a(href='/products/details/' + sellItem.id)
+      .short_pro
+        ul
+          li
+            | L&#x1B0;&#x1EE3;t xem: #{sellItem.views}
+          li
+            | L&#x1B0;&#x1EE3;t b&aacute;n: #{sellItem.sells}
+          li
+            | Mô tả: #{sellItem.description}
+          li
+            | Xu&#x1EA5;t x&#x1EE9;: #{sellItem.origin}
+          li
+            | Lo&#x1EA1;i: #{sellItem.nameType}
+          li
+            | Nh&agrave; xu&#x1EA5;t b&#x1EA3;n: #{sellItem.nameCompany}
