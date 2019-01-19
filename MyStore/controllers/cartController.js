@@ -160,6 +160,21 @@ router.get('/payForm', (req, res) => {
 });
 
 router.post('/cart', function(req, res) {
+  // thanh toan
+  var privKey = req.body.privKey;
+  var sha256 = require('sha256');
+  var EC = require('elliptic').ec;
+  var ec = new EC('secp256k1');
+  var key = ec.keyFromPrivate(privKey, 'hex');
+  var pubKey = key.getPublic('hex');
+  var pubKeyHash = sha256(pubKey);
+
+  console.log('private key: ' + privKey);
+  console.log('public key: ' + pubKey);
+  console.log('public key hash: ' + pubKeyHash);
+
+
+
   var p1 = cartRepo.createOrder(req.session.user.id);
   Promise.all([p1]).then(([p1Rows]) => {
     var p2 = cartRepo.getLastOrderId(req.session.user.id);
