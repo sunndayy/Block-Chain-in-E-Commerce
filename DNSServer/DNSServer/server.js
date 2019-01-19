@@ -1,7 +1,7 @@
 'use strict';
 var http = require('http');
 var port = process.env.PORT || 1337;
-var WebSocket = require("ws");
+var WebSocketServer = require("websocket").server;
 
 var urls = [];
 
@@ -14,13 +14,13 @@ var httpServer = http.createServer(function (req, res) {
 });
 httpServer.listen(port);
 
-var wsServer = new WebSocket.Server({ server: httpServer });
-
-wsServer.on("connection", ws => {
+var wsServer = new WebSocketServer({ httpServer: httpServer });
+wsServer.on("request", req => {
 	var url = null;
-	ws.on("message", message => {
+	var connection = req.accept(req.origin);
+	connection.on("message", message => {
 		try {
-			message = JSON.parse(message);
+			message = JSON.parse(message.utf8Data);
 			if (message.header == "addr") {
 				url = message.addr;
 				if (urls.indexOf(url) < 0) {
@@ -31,11 +31,11 @@ wsServer.on("connection", ws => {
 			console.log(err);
 		}
 	});
-	ws.on("close", (code, reason) => {
+	connection.on("close", () => {
 		var i = urls.indexOf(url);
 		if (i >= 0) {
 			urls.splice(i, 1);
 		}
 	});
-	ws.on("error", err => { });
+	connection.on("error", err => { });
 });
