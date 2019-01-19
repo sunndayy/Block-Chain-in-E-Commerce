@@ -261,9 +261,9 @@ class BlockChain {
 		} else {
 			return false;
 		}
-		// if (this.IsOnTop(creatorPubKeyHash)) {
-		// 	return false;
-		// }
+		if (this.IsOnTop(creatorPubKeyHash) && blockHeader.index > 3) {
+			return false;
+		}
 		for (var i = 0; i < Const.n; i++) {
 			var pubKey = blockHeader.validatorSigns[i].pubKey;
 			if (!this.IsOnTop(Crypto.Sha256(pubKey))) {
