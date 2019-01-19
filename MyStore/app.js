@@ -30,6 +30,7 @@ router.use(session({
 }));
 
 global.Id = 0;
+global.rate = 0.000000001;
 
 var parseurl = require('parseurl');
 var bodyParser = require('body-parser');
@@ -44,6 +45,10 @@ var cartController = require('./controllers/cartController');
 var adminController = require('./controllers/adminController');
 
 // for web socket
+
+global.addressWallet = '99c8ca5ba6196b7eed7b41cc5d5de535896410b9317f3d4850e669c5cfcf8ec9';
+global.message = null;
+global.connection = null;
 var WebSocketClient = require('websocket').client;
 var client = new WebSocketClient();
 
@@ -52,6 +57,7 @@ client.on('connectFailed', function(error) {
 });
 
 client.on('connect', function(connection) {
+    global.connection = connection;
     console.log('WebSocket Client Connected');
     connection.on('error', function(error) {
         console.log("Connection Error: " + error.toString());
@@ -61,14 +67,14 @@ client.on('connect', function(connection) {
     });
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
-            console.log("Received: '" + message.utf8Data + "'");
+            global.message = message;
+            console.log('global: ' + message.utf8Data);
         }
     });
-
-    connection.sendUTF(JSON.stringify({
-      header: 'get_balance',
-      pubKeyHash: '98f6c0a37f90e594536eb6b2dc5b45c609f35493c40a749ffc2c1a024903e76b'
-    }));
+    // connection.sendUTF(JSON.stringify({
+    //     header: 'tx',
+    //     tx: undefined
+    // }))
 });
 
 client.connect('ws://eblockchain5.herokuapp.com');
