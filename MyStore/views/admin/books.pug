@@ -1,0 +1,25 @@
+each item in items
+  .col-md-11.col-sm-11.col-xs-12(style='margin-top: 10px;')
+    li.list-group-item
+      | Tên: #{item.name}
+      br
+      | Giá: #{item.price}
+      br
+      | Lượt xem: #{item.views}
+      br
+      | Lượt bán: #{item.sells}
+      br
+      | Mô tả: #{item.description}
+      br
+      | Xuất xứ: #{item.origin}
+      br
+      | Thể loại: #{item.nameType}
+      br
+      | Nhà xuất bản: #{item.nameCompany}
+      br
+      | Số lượng: #{item.amount}
+      br
+      | Hình ảnh: #{item.image}
+  .col-md-1.col-sm-1.col-xs-12(style='margin-top: 10px;')
+    a.btn.btn-default(href='/admin/updateBook/' + item.id) Sửa
+    a.btn.btn-default(href='/admin/delBook/' + item.id style='margin-top: 5px;') Xóa

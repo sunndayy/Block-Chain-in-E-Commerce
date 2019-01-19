@@ -44,11 +44,11 @@ exports.insertOrderItem = (Order_Id, Product_Id, Quantity, Sum_Price) => {
 }
 
 exports.loadDetails = (Order_Id) => {
-	var sql = `SELECT books.id, books.image, books.name, books.price, order_items.quantity, orders.payStatus, orders.status, orders.date FROM books INNER JOIN order_items ON books.id = order_items.product_id INNER JOIN orders ON orders.id = order_items.order_id WHERE order_id = ${Order_Id}`;
+	var sql = `SELECT books.id, books.image, books.name, books.price, order_items.quantity, orders.status, orders.payStatus, orders.date FROM books INNER JOIN order_items ON books.id = order_items.product_id INNER JOIN orders ON orders.id = order_items.order_id WHERE order_id = ${Order_Id}`;
 	return db.load(sql);
 }
 
-exports.updateOrderPayStatus = (Order_Id) => {
+exports.updatePayStatus = (Order_Id) => {
 	var sql = `UPDATE orders SET payStatus = 'Đã thanh toán' WHERE id = ${Order_Id}`;
 	return db.save(sql);
 }

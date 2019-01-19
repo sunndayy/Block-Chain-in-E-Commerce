@@ -1,0 +1,11 @@
+each item in items
+  .col-md-9.col-sm-9.col-xs-12(style='margin-top: 10px;')
+    li.list-group-item
+      | Tên nhà xuất bản: #{item.nameCompany}
+  .col-md-3.col-sm-3.col-xs-12(style='margin-top: 10px;')
+    if (!updateCompanyID)
+      a.btn.btn-default(href='/admin/updateCompany/' + item.id) Cập nhật nhà xuất bản
+    else
+      form.form(action='/admin/updateCompany' method='post' accept-charset='utf-8' role='form')
+        button.btn.btn-default(type='submit') Cập nhật nhà xuất bản
+        input.form-control.input-md(name='nameCompany' style='margin-top: 10px; width: 175px;' required)

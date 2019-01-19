@@ -1,0 +1,36 @@
+doctype html
+head
+  title Cập nhật thông tin
+  meta(charset='utf-8')
+  meta(name='viewport' content='width=device-width, initial-scale=1')
+  link(rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css')
+  link(rel='stylesheet' type='text/css' href='/css/bootstrap.min.css')
+  script(type='text/javascript' src='/js/jquery.min.js')
+  script(type='text/javascript' src='/js/bootstrap.min.js')
+  link(rel='stylesheet' type='text/css' href='/css/login.css')
+  link(rel='shortcut icon' type='image/x-icon' href='/images/ic_book.png')
+#wrap.container
+  .row(style='margin-bottom: 15px;')
+    .col-md-6.col-md-offset-3
+      form.form(action='/admin/updateBook' method='post' accept-charset='utf-8' role='form')
+        legend Cập nhật thông tin sách
+        input.form-control.input-lg(type='text' name='namebook' value='' + items[0].name placeholder='' + items[0].name required)
+        input.form-control.input-lg(type='number' name='price' value='' + items[0].price placeholder='' + items[0].price required)
+        input.form-control.input-lg(type='text' name='description' value='' + items[0].description placeholder='' + items[0].description required)
+        input.form-control.input-lg(type='text' name='origin' value='' + items[0].origin placeholder='' + items[0].origin required)
+        select.form-control.input-lg(name='typebook' required)
+          each type in types
+            if (type.id == items[0].type)
+              option(value=type.id selected) #{type.nameType}
+            else
+              option(value=type.id) #{type.nameType}
+        select.form-control.input-lg(name='publishing_company' required)
+          each company in companys
+            if (company.id == items[0].publishing_company)
+              option(value=company.id selected) #{company.nameCompany}
+            else
+              option(value=company.id) #{company.nameCompany}
+        input.form-control.input-lg(type='number' name='amount' value='' + items[0].amount placeholder='' + items[0].amount required)
+        input.form-control.input-lg(type='text' name='image' value='' + items[0].image placeholder='' + items[0].image required)
+        button.btn.btn-lg.btn-primary.btn-block.signup-btn(type='submit')
+          | Cập nhật

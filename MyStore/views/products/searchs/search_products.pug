@@ -1,0 +1,40 @@
+each item in items
+  .item_pro
+    if (isLogged)
+      a(href='/products/details/' + item.id)
+      .top_pro.hover_top
+        .viewmore-section
+          a#addToCart(style='background: #fb005b; color: #fff;' href='/cart/myCart/' + item.id)
+            span Th&ecirc;m v&agrave;o gi&#x1ECF; h&agrave;ng
+    else
+      a(href='/products/details/' + item.id)
+      .top_pro.hover_top
+        h3= item.name
+        .price_pro.text-center
+          span.price_sale= item.price
+            sup &dstrok;
+    .img_pro
+      .img
+        a(href='/products/details/' + item.id)
+          img(src= item.image alt='')
+    .top_pro
+      h3
+        a(href='/products/details/' + item.id)= item.name
+      .price_pro.text-center
+        span.price_sale #{item.price}
+          sup &dstrok;
+    a(href='/products/details/' + item.id)
+      .short_pro
+        ul
+          li
+            | L&#x1B0;&#x1EE3;t xem: #{item.views}
+          li
+            | L&#x1B0;&#x1EE3;t b&aacute;n: #{item.sells}
+          li
+            | Mô tả: #{item.description}
+          li
+            | Xu&#x1EA5;t x&#x1EE9;: #{item.origin}
+          li
+            | Lo&#x1EA1;i: #{item.nameType}
+          li
+            | Nh&agrave; xu&#x1EA5;t b&#x1EA3;n: #{item.nameCompany}
