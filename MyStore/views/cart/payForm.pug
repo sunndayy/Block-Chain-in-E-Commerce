@@ -14,14 +14,10 @@ head
     .col-md-6.col-md-offset-3
       form.form(action='/cart' method='post' accept-charset='utf-8' role='form')
         legend Th&ocirc;ng tin kh&aacute;ch h&agrave;ng
-        input.form-control.input-lg(type='text' name='name' value='' placeholder='Nhập Tên' required)
+        input.form-control.input-lg(type='text' name='name' value='' placeholder='Nhập Họ Tên' required)
         input.form-control.input-lg(type='text' name='address' value='' placeholder='Nhập Địa Chỉ' required)
         input.form-control.input-lg(type='number' name='telephone' value='' placeholder='Nhập Số Điện Thoại' required)
         input.form-control.input-lg(type='email' name='email' value='' placeholder='Nhập Email' required)
-        select.form-control.input-lg(required)
-          option(value='') Ch&#x1ECD;n ph&#x1B0;&#x1A1;ng th&#x1EE9;c thanh to&aacute;n
-          option(value='Check') Check
-          option(value='Cash') Ti&#x1EC1;n m&#x1EB7;t
-          option(value='Credit Card') Th&#x1EBB; t&iacute;n d&#x1EE5;ng
+        input.form-control.input-lg(type='password' name='privKey' value='' placeholder='Nhập khóa bí mật' required)
         button.btn.btn-lg.btn-primary.btn-block.signup-btn(type='submit')
           | Thanh to&aacute;n
