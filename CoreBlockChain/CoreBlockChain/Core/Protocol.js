@@ -100,6 +100,7 @@ function CollectNewBlock() {
 
 function Connect(url) {
 	var client = new WebSocketClient();
+	client.on("connectFailed", error => { });
 	client.on("connect", connection => {
 		var node = new Node(connection);
 		node.Write({
@@ -109,7 +110,7 @@ function Connect(url) {
 			wantConnect: true
 		});
 	});
-	client.connect("ws://" + url, "echo-protocol");
+	client.connect("ws://" + url);
 }
 
 function AddBlock(newBlock, preBlock) {
@@ -188,7 +189,9 @@ class Node {
 	constructor(connection) {
 		this.connection = connection;
 		this.followees = [];
-
+		this.connection.on("error", err => {
+			console.log(err);
+		});
 		this.connection.on("message", message => {
 			try {
 				message = JSON.parse(message.utf8Data);
@@ -197,8 +200,7 @@ class Node {
 				console.log(err);
 			}
 		});
-
-		this.connection.on("close", (reasonCode, description) => {
+		this.connection.on("close", () => {
 			if (this.pubKeyHash) {
 				if (nodes[this.pubKeyHash]) {
 					delete nodes[this.pubKeyHash];
@@ -562,12 +564,19 @@ function ConnectDNSServer() {
 				}
 				var client = new WebSocketClient();
 				client.on("connect", connection => {
+					connection.on("error", err => {
+						console.log(err);
+					});
+					connection.on("close", () => { });
+					connection.on("message", message => {
+						console.log(message.utf8Data);
+					});
 					connection.sendUTF(JSON.stringify({
 						header: "addr",
 						addr: myUrl
 					}));
 				});
-				client.connect("ws://" + Const.dnsServer, "echo-protocol");
+				client.connect("ws://" + Const.dnsServer);
 			});
 		} catch (err) {
 			console.log(err);
@@ -601,12 +610,10 @@ function main() {
 	});
 	server.listen(Const.systemPort, () => {
 	});
-	var wsServer = new WebSocketServer({
-		httpServer: server,
-		autoAcceptConnections: false
-	});
+	var wsServer = new WebSocketServer({ httpServer: server });
 	wsServer.on("request", req => {
-		new Node(req.accept("echo-protocol", req.origin));
+		var connection = req.accept(req.origin);
+		new Node(connection);
 	});
 	process.on("SIGHUP", code => {
 		fs.writeFileSync(Const.nextBlockFile, JSON.stringify(nextBlock));
