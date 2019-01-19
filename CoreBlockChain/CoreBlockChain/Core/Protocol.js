@@ -437,7 +437,8 @@ class Node {
 					txPool.push(tx);
 					if (state == 1
 						&& myBlockChain.GetTimeMustWait(myPubKeyHash) <= 0
-						&& unCompletedBlock == null) {
+						&& unCompletedBlock == null
+						&& !myBlockChain.IsOnTop(myPubKeyHash)) {
 						CollectNewBlock();
 					}
 				}
@@ -574,6 +575,18 @@ function ConnectDNSServer() {
 	});
 }
 
+function ConnectTrustedPeers() {
+	var allNodes = Object.values(nodes);
+	var allUrls = allNodes.map(node => {
+		return node.url;
+	});
+	Const.trustedPeers.forEach(url => {
+		if (allUrls.indexOf(url) < 0 && url != myUrl) {
+			Connect(url);
+		}
+	});
+}
+
 function main() {
 	myBlockChain.Initiate(() => {
 		if (!myBlockChain.IsOnTop(myPubKeyHash) && state == 1) {
@@ -583,6 +596,7 @@ function main() {
 		}
 	});
 	ConnectDNSServer();
+	ConnectTrustedPeers();
 	var server = http.createServer((req, res) => {
 	});
 	server.listen(Const.systemPort, () => {
