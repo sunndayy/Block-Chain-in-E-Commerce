@@ -118,13 +118,14 @@ var wsServer = new WebSocketServer({
 });
 wsServer.on("request", req => {
     sessionParser(req.httpRequest, {}, () => {
+        console.log(req.httpRequest.session.user);
         if (req.httpRequest.session.user) {
             var connection = req.accept(null, req.origin);
             var id = req.httpRequest.session.user.id;
             if (!users[id]) {
                 users[id] = [];
             }
-            users.id.push(connection);
+            users[id].push(connection);
             connection.on("message", message => {
     
             });
