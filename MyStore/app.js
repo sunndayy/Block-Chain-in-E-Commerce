@@ -119,8 +119,12 @@ var wsServer = new WebSocketServer({
 wsServer.on("request", req => {
     sessionParser(req.httpRequest, {}, () => {
         if (req.httpRequest.session.user) {
-            var id = req.httpRequest.session.user.id;
             var connection = req.accept(null, req.origin);
+            var id = req.httpRequest.session.user.id;
+            if (!users[id]) {
+                users[id] = [];
+            }
+            users.id.push(connection);
             connection.on("message", message => {
     
             });
