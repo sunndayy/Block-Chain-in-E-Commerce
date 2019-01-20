@@ -174,7 +174,7 @@ router.post('/cart', function(req, res) {
     var utxos;
     var totalMoney = 0;
     var totalInput = 0;
-    var txIns = [], txOuts;
+    var txIns = [], txOuts, tx;
     var senderSign;
 
     connection.sendUTF(JSON.stringify({
@@ -211,6 +211,7 @@ router.post('/cart', function(req, res) {
         }
       });
 
+      totalMoney = totalMoney * 1.01;
       for (var k = 0; k < utxos.length; k++) {
         if (!utxos[k].isLocked) {
           totalInput += utxos[k].money;
@@ -218,52 +219,38 @@ router.post('/cart', function(req, res) {
             preHashTx: utxos[k].preHashTx,
             outputIndex: utxos[k].outputIndex
           });
-          if (totalInput > totalMoney * rate * 1.01) {
+          if (totalInput > totalMoney) {
             break;
           }
         }
       }
 
       txOuts = [{
-        pubKeyHash: addressWallet,
-        money: totalMoney * rate * 1.01,
-        isLocked: false
+        pubKeyHash: addressWalletStore,
+        money: totalMoney,
+      }, {
+        pubKeyHash: pubKeyHash,
+        money: totalInput - totalMoney
       }];
 
+      tx = {
+        txIns: txIns,
+        txOuts: txOuts,
+        message: p2Rows[0].id.toString()
+      }
+
       senderSign = {
-        message: {
-          txIns: txIns,
-          txOuts: txOuts,
-          message: p2Rows[0].id
-        },
+        message: JSON.stringify(tx),
         pubKey: pubKey,
-        signature: key.sign(sha256(JSON.stringify({
-          txIns: txIns,
-          txOuts: txOuts,
-          message: p2Rows[0].id
-        }), { asBytes: true }))
+        signature: key.sign(sha256(JSON.stringify(tx), { asBytes: true }))
       };
 
-      console.log(JSON.stringify({
-        header: 'tx',
-        tx: {
-          txIns: txIns,
-          txOuts: txOuts,
-          message: p2Rows[0].id,
-          senderSign: senderSign,
-        }
-      }));
+      tx.senderSign = senderSign;
 
       connection.sendUTF(JSON.stringify({
         header: 'tx',
-        tx: {
-          txIns: txIns,
-          txOuts: txOuts,
-          message: p2Rows[0].id,
-          senderSign: senderSign,
-        }
+        tx: tx
       }));
-
 
       req.session.cart = [];
       res.redirect('/');

@@ -30,7 +30,6 @@ router.use(session({
 }));
 
 global.Id = 0;
-global.rate = 0.000000001;
 
 var parseurl = require('parseurl');
 var bodyParser = require('body-parser');
@@ -45,8 +44,7 @@ var cartController = require('./controllers/cartController');
 var adminController = require('./controllers/adminController');
 
 // for web socket
-
-global.addressWallet = '99c8ca5ba6196b7eed7b41cc5d5de535896410b9317f3d4850e669c5cfcf8ec9';
+global.addressWalletStore = '99c8ca5ba6196b7eed7b41cc5d5de535896410b9317f3d4850e669c5cfcf8ec9';
 global.message = null;
 global.connection = null;
 var WebSocketClient = require('websocket').client;
@@ -58,7 +56,7 @@ client.on('connectFailed', function(error) {
 
 client.on('connect', function(connection) {
     global.connection = connection;
-    console.log('WebSocket Client Connected');
+    console.log('Connect to E-Coin');
     connection.on('error', function(error) {
         console.log("Connection Error: " + error.toString());
     });
@@ -68,20 +66,17 @@ client.on('connect', function(connection) {
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
             global.message = message;
-            console.log('global: ' + message.utf8Data);
+            var data = JSON.parse(message.utf8Data);
+            if (data.header == 'tx_result') {
+                console.log(data);
+            }
         }
     });
-    // connection.sendUTF(JSON.stringify({
-    //     header: 'tx',
-    //     tx: undefined
-    // }))
 });
 
 client.connect('ws://eblockchain5.herokuapp.com');
 
-
-
-
+// for app
 var app = express();
 
 app.use(cookieParser());
@@ -91,7 +86,7 @@ app.use(bodyParser.json());
 
 // for parsing application/xwww-
 app.use(bodyParser.urlencoded({ extended: true })); 
-//form-urlencoded
+// form-urlencoded
 
 // for parsing multipart/form-data
 app.use(upload.array());
