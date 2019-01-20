@@ -129,7 +129,8 @@ wsServer.on("request", req => {
     
             });
             connection.on("close", (reasonCode, description) => {
-    
+                var index = users[id].indexOf(connection);
+                users[id].splice(index, 1);
             });
             connection.sendUTF(id);
         } else {
