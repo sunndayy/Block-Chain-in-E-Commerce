@@ -2,6 +2,7 @@ global.express = require('express');
 
 global.session = require('express-session');
 var MySQLStore = require('express-mysql-session')(session);
+var http = require("http");
 
 global.sessionStore = new MySQLStore({
   host: 'remotemysql.com',
@@ -21,13 +22,14 @@ global.sessionStore = new MySQLStore({
 });
 global.router = express.Router();
 
-router.use(session({
-  key: 'session_cookie_name',
-  secret: 'session_cookie_secret',
-  store: sessionStore,
-  resave: false,
-  saveUninitialized: false
-}));
+var sessionParser = session({
+    key: 'session_cookie_name',
+    secret: 'session_cookie_secret',
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false
+});
+router.use(sessionParser);
 
 global.Id = 0;
 
@@ -105,4 +107,27 @@ app.use('/users', userController);
 app.use('/cart', cartController);
 app.use('/admin', adminController);
 
-app.listen(process.env.PORT || 3000);
+var httpServer =  http.createServer(app);
+httpServer.listen(process.env.PORT || 3000);
+
+var users = {}; // key la id, value la websocket tuong ung
+var WebSocketServer = require("websocket").server;
+var wsServer = new WebSocketServer({ 
+    httpServer: httpServer, 
+    autoAcceptConnections:false
+});
+wsServer.on("request", req => {
+    sessionParser(req.httpRequest, {}, () => {
+        if (req.httpRequest.session.user) {
+            var id = req.httpRequest.session.user.id;
+            var connection = req.accept(null, req.origin);
+            connection.on("message", message => {
+    
+            });
+            connection.on("close", (reasonCode, description) => {
+    
+            });
+            connection.sendUTF(id);
+        }
+    });
+});

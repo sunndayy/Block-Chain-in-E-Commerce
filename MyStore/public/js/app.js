@@ -1,4 +1,19 @@
 $(document).ready(function() {
+  var ws = new WebSocket("ws://localhost:3000");
+  ws.onopen = function(evt) {
+    console.log("Da ket noi");
+  };
+  ws.onmessage = function(evt) {
+    console.log(evt.data);
+    alert(evt.data);
+  };
+  ws.onerror = function(evt) {
+    console.log(evt);
+  };
+  ws.onclose = function(evt) {
+    console.log("Da dong ket noi");
+  };
+
   $('.view_more').click(function(event) {
     event.preventDefault();
     $(this).addClass('hide');
