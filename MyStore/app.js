@@ -128,6 +128,8 @@ wsServer.on("request", req => {
     
             });
             connection.sendUTF(id);
+        } else {
+            req.reject();
         }
     });
 });
