@@ -275,7 +275,6 @@ class BlockChain {
 	GetData(blockHeaderHash, cb) {
 		db.get(blockHeaderHash, (err, value) => {
 			if (err) {
-				console.log(err);
 				cb(null);
 			} else {
 				cb(value.blockData);

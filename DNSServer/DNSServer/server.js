@@ -17,7 +17,7 @@ httpServer.listen(port);
 var wsServer = new WebSocketServer({ httpServer: httpServer });
 wsServer.on("request", req => {
 	var url = null;
-	var connection = req.accept(req.origin);
+	var connection = req.accept(null, req.origin);
 	connection.on("message", message => {
 		try {
 			message = JSON.parse(message.utf8Data);

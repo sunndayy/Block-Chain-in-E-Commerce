@@ -26,6 +26,7 @@ const TX = "tx";
 const NEED_VALIDATING = "need_validating";
 const VALIDATE_RESULT = "validate_result";
 const FOLLOW = "follow";
+const FOLLOW_SUCCESS = "follow_success";
 const RECENT_TX = "recent_tx";
 const ERROR = "error";
 
@@ -153,7 +154,7 @@ function AddBlock(newBlock, preBlock) {
 	try {
 		clearTimeout(timeout1);
 	} catch (err) {
-		console.log(err);
+		console.log(err.toString());
 	}
 	timeout1 = setTimeout(() => {
 		state = 3;
@@ -174,7 +175,7 @@ function AddBlock(newBlock, preBlock) {
 			try {
 				clearTimeout(timeout2);
 			} catch (err) {
-				console.log(err);
+				console.log(err.toString());
 			}
 			if (!myBlockChain.IsOnTop(myPubKeyHash)) {
 				timeout2 = setTimeout(() => {
@@ -190,14 +191,17 @@ class Node {
 		this.connection = connection;
 		this.followees = [];
 		this.connection.on("error", err => {
-			console.log(err);
+			console.log(err.toString());
 		});
 		this.connection.on("message", message => {
 			try {
 				message = JSON.parse(message.utf8Data);
 				this.HandleMessage(message);
 			} catch (err) {
-				console.log(err);
+				this.Write(JSON.stringify({
+					header: ERROR,
+					code: err.toString()
+				}));
 			}
 		});
 		this.connection.on("close", () => {
@@ -525,6 +529,10 @@ class Node {
 					followers[message.pubKeyHash].push(this);
 				}
 				this.followees.push(message.pubKeyHash);
+				this.Write(JSON.stringify({
+					header: FOLLOW_SUCCESS,
+					pubKeyHash: message.pubKeyHash
+				}));
 				break;
 			}
 
@@ -565,7 +573,7 @@ function ConnectDNSServer() {
 				var client = new WebSocketClient();
 				client.on("connect", connection => {
 					connection.on("error", err => {
-						console.log(err);
+						console.log(err.toString());
 					});
 					connection.on("close", () => { });
 					connection.on("message", message => {
@@ -579,7 +587,7 @@ function ConnectDNSServer() {
 				client.connect("ws://" + Const.dnsServer);
 			});
 		} catch (err) {
-			console.log(err);
+			console.log(err.toString());
 		}
 	});
 }
@@ -612,7 +620,7 @@ function main() {
 	});
 	var wsServer = new WebSocketServer({ httpServer: server });
 	wsServer.on("request", req => {
-		var connection = req.accept(req.origin);
+		var connection = req.accept(null, req.origin);
 		new Node(connection);
 	});
 	process.on("SIGHUP", code => {
