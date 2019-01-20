@@ -310,7 +310,7 @@ class BlockChain {
 			if (Math.abs(totalInput - totalOutput - tx.CalculateFee()) > 0.0000000001) {
 				return "Khong du tien";
 			}
-			return "Thanh cong";
+			return "Dang xu ly";
 		}
 		return "Tai khoan khong ton tai";
 	}

@@ -27,7 +27,7 @@ const NEED_VALIDATING = "need_validating";
 const VALIDATE_RESULT = "validate_result";
 const FOLLOW = "follow";
 const FOLLOW_SUCCESS = "follow_success";
-const RECENT_TX = "recent_tx";
+const TX_RESULT = "tx_result";
 const ERROR = "error";
 
 // My info
@@ -141,9 +141,10 @@ function AddBlock(newBlock, preBlock) {
 			if (followers[pubKeyHash]) {
 				followers[pubKeyHash].forEach(node => {
 					node.Write({
-						header: RECENT_TX,
-						pubKeyHash: pubKeyHash,
-						tx: tx
+						header: TX_RESULT,
+						hashTx: Crypto.Sha256(JSON.stringify(tx)),
+						message: tx.message,
+						result: "Thanh cong"
 					});
 				});
 			}
@@ -200,7 +201,7 @@ class Node {
 			} catch (err) {
 				this.Write(JSON.stringify({
 					header: ERROR,
-					code: err.toString()
+					error: err.toString()
 				}));
 			}
 		});
@@ -439,7 +440,7 @@ class Node {
 					});
 				}
 				var result = myBlockChain.ValidateTx(tx);
-				if (result == "Thanh cong") {
+				if (result == "Dang xu ly") {
 					txPool.push(tx);
 					if (state == 1
 						&& myBlockChain.GetTimeMustWait(myPubKeyHash) <= 0
@@ -449,7 +450,7 @@ class Node {
 					}
 				}
 				this.Write({
-					header: "tx_result",
+					header: TX_RESULT,
 					hashTx: Crypto.Sha256(JSON.stringify(tx)),
 					result: result
 				});
@@ -542,7 +543,8 @@ class Node {
 
 			default: {
 				this.Write({
-					header: ERROR
+					header: ERROR,
+					error: "Invalid header"
 				});
 				break;
 			}
