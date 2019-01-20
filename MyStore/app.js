@@ -30,6 +30,7 @@ router.use(session({
 }));
 
 global.Id = 0;
+global.rate = 0.000000001;
 
 var parseurl = require('parseurl');
 var bodyParser = require('body-parser');
@@ -42,6 +43,44 @@ var productController = require('./controllers/productController');
 var userController = require('./controllers/userController');
 var cartController = require('./controllers/cartController');
 var adminController = require('./controllers/adminController');
+
+// for web socket
+
+global.addressWallet = '99c8ca5ba6196b7eed7b41cc5d5de535896410b9317f3d4850e669c5cfcf8ec9';
+global.message = null;
+global.connection = null;
+var WebSocketClient = require('websocket').client;
+var client = new WebSocketClient();
+
+client.on('connectFailed', function(error) {
+    console.log('Connect Error: ' + error.toString());
+});
+
+client.on('connect', function(connection) {
+    global.connection = connection;
+    console.log('WebSocket Client Connected');
+    connection.on('error', function(error) {
+        console.log("Connection Error: " + error.toString());
+    });
+    connection.on('close', function() {
+        console.log('Connection Closed');
+    });
+    connection.on('message', function(message) {
+        if (message.type === 'utf8') {
+            global.message = message;
+            console.log('global: ' + message.utf8Data);
+        }
+    });
+    // connection.sendUTF(JSON.stringify({
+    //     header: 'tx',
+    //     tx: undefined
+    // }))
+});
+
+client.connect('ws://eblockchain5.herokuapp.com');
+
+
+
 
 var app = express();
 
