@@ -131,6 +131,9 @@ wsServer.on("request", req => {
             connection.on("close", (reasonCode, description) => {
                 var index = users[id].indexOf(connection);
                 users[id].splice(index, 1);
+                if (users[id].length == 0) {
+                    delete users[id];
+                }
             });
             connection.sendUTF(id);
         } else {
