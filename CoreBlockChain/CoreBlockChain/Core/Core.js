@@ -413,9 +413,8 @@ class BlockChain {
 			return blockChain.walletDictionary[b].GetTotalDeposit() - blockChain.walletDictionary[a].GetTotalDeposit();
 		});
 		console.log(blockHeader.index + "/");
-		var allKeys = Object.keys(this.walletDictionary);
-		for (var i = 0; i < allKeys.length; i++) {
-			console.log(allKeys[i] + ": " + this.walletDictionary[allKeys[i]].GetTotalMoney());
+		for (var i = 0; i < this.walletArray.length; i++) {
+			console.log(this.walletArray[i] + ": " + this.walletDictionary[this.walletArray[i]].GetTotalMoney());
 		}
 		console.log();
 	}

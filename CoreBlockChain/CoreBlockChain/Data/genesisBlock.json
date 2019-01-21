@@ -1,7 +1,7 @@
 {
   "blockHeader": {
     "index": 0,
-    "merkleRoot": "5928d4816cce5362e016b127fe5ca5b7449168a29bc356b3036d451cfd90cfea"
+    "merkleRoot": "765a8e0bfead60e6d1b53fb9690313a34ccfa8252267d6f5e880c646f7e62130"
   },
   "blockData": {
     "txs": [
@@ -9,51 +9,48 @@
         "txOuts": [
           {
             "pubKeyHash": "1e095aff6eef007cb07577f0646e31b3756e6fe8d505462b477cdd273bc2243a",
-            "money": 100,
+            "money": 100000,
             "isLocked": true
           },
           {
             "pubKeyHash": "2dedf231bb53757027f475dc6a37259348004875cc9882df46b8e1ce3a36c773",
-            "money": 95,
+            "money": 95000,
             "isLocked": true
           },
           {
             "pubKeyHash": "98f6c0a37f90e594536eb6b2dc5b45c609f35493c40a749ffc2c1a024903e76b",
-            "money": 90,
+            "money": 90000,
             "isLocked": true
           },
           {
             "pubKeyHash": "368a5b069220e0919d2481f07161c5625ee4167e0a886a9c5c01be81d7b7db12",
-            "money": 85,
+            "money": 85000,
             "isLocked": true
           },
           {
             "pubKeyHash": "645e939a236c2a4e89ae4c5cdcca7c7f11e98e9567b8f1cbedc5d252ea374432",
-            "money": 80,
+            "money": 80000,
             "isLocked": true
           },
           {
             "pubKeyHash": "570c9ed430be8fab70bc46a88deb3842804a796fb8a4ee057bf52c302bf2919b",
-            "money": 75,
-            "isLocked": true
+            "money": 75000
           },
           {
             "pubKeyHash": "99c8ca5ba6196b7eed7b41cc5d5de535896410b9317f3d4850e669c5cfcf8ec9",
-            "money": 70,
-            "isLocked": true
+            "money": 70000
           },
           {
             "pubKeyHash": "6112f84148e751207ab588ddc7a3ee232d47d66713955393fdcd2b1f11d6ae78",
-            "money": 65,
-            "isLocked": true
+            "money": 65000
           },
           {
             "pubKeyHash": "10bfd7752d0776e4ac9e4e64adba1b5dc285a721c164dadcbc150eddfb2e3aa4",
-            "money": 60
+            "money": 60000
           },
           {
             "pubKeyHash": "28038b422bcfeb9392fe5eebbb57e652d0507cf122a8c77833c32a3766a996a8",
-            "money": 55
+            "money": 55000
           }
         ]
       }
