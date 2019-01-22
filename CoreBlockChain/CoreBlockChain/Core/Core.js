@@ -239,11 +239,11 @@ class BlockChain {
 		if (blockHeader.preBlockHash != preBlockHeader.GetHash()) {
 			return false;
 		}
-		if (preBlockHeader.validatorSigns) {
-			var msg = JSON.parse(blockHeader.validatorSigns[0].message);
-			if (msg.timeStamp - preBlockHeader.GetTimeStamp() < Const.blockDuration) {
-				return false;
-			}
+		var msg = JSON.parse(blockHeader.validatorSigns[0].message);
+		if (msg.timeStamp - preBlockHeader.GetTimeStamp() < Const.blockDuration) {
+			return false;
+		}
+		if (blockHeader.index > 2) {
 			for (var i = 0; i < Const.n; i++) {
 				for (var j = 0; j < Const.n; j++) {
 					if (preBlockHeader.validatorSigns[i].pubKey == blockHeader.validatorSigns[j].pubKey) {
