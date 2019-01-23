@@ -1,0 +1,43 @@
+﻿extends layout
+
+block content
+    table(width="460",border="2",cellpadding="5",align="center")
+        // Title
+        tr
+            th(colspan="2") Kiểm tra thông tin ví
+        // PubKeyHash
+        tr
+            td Public key hash
+            td
+                input(type="text",id="pubKeyHash",size="30",placeholder="Nhập public key hash")
+                |&nbsp;
+                button(onclick="GetKey()") Tạo ví mới
+        // Balance
+        tr
+            td Số dư ví
+            td(id="balance") 0
+        // Total utxos
+        tr
+            td Tổng utxo
+            td(id="utxo") 0
+        // Total deposit
+        tr
+            td Số tiền đặt cọc
+            td(id="deposit") 0
+        // Host
+        tr
+            td Host
+            td
+                select(id="host")
+                    option(value="ws://eblockchain1.herokuapp.com") ws://eblockchain1.herokuapp.com
+                    option(value="ws://eblockchain2.herokuapp.com") ws://eblockchain2.herokuapp.com
+                    option(value="ws://eblockchain3.herokuapp.com") ws://eblockchain3.herokuapp.com
+                    option(value="ws://eblockchain4.herokuapp.com") ws://eblockchain4.herokuapp.com
+                    option(value="ws://eblockchain5.herokuapp.com") ws://eblockchain5.herokuapp.com
+        // Button
+        tr
+            td(colspan="2",align="center")
+                button(onclick="Reset()") Nhập lại
+                |&nbsp;
+                |&nbsp;
+                button(onclick="Check()") Kiểm tra
