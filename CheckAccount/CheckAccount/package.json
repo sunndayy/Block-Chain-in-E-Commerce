@@ -6,9 +6,7 @@
     "start": "node app"
   },
   "description": "CheckAccount",
-  "author": {
-    "name": ""
-  },
+  "author": "",
   "dependencies": {
     "body-parser": "^1.18.3",
     "cookie-parser": "^1.4.3",
@@ -19,5 +17,11 @@
     "pug": "^2.0.3",
     "serve-favicon": "^2.5.0",
     "sha256": "^0.2.0"
+  },
+  "main": "app.js",
+  "devDependencies": {},
+  "license": "ISC",
+  "engines": {
+    "node": "10.x"
   }
 }

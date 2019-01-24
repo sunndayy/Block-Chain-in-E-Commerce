@@ -1,10 +1,1 @@
-{
-  "blockHeader": {
-    "index": 1,
-    "merkleRoot": "",
-    "preBlockHash": "815d1ddb41c3cccc98f59716704794cf9362728e4f23bddc40400d994292e018"
-  },
-  "blockData": {
-    "txs": []
-  }
-}
+{"blockHeader":{"index":1,"merkleRoot":"","preBlockHash":"815d1ddb41c3cccc98f59716704794cf9362728e4f23bddc40400d994292e018"},"blockData":{"txs":[]}}
