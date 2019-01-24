@@ -46,48 +46,62 @@ var cartController = require('./controllers/cartController');
 var adminController = require('./controllers/adminController');
 
 // for web socket
-global.addressWalletStore = '99c8ca5ba6196b7eed7b41cc5d5de535896410b9317f3d4850e669c5cfcf8ec9';
+global.addressWalletStore = '1e095aff6eef007cb07577f0646e31b3756e6fe8d505462b477cdd273bc2243a';
 global.message = null;
 global.connectionBlockChain = null;
-var WebSocketClient = require('websocket').client;
-var client = new WebSocketClient();
 
-client.on('connectFailed', function(error) {
-    console.log('Connect Error: ' + error.toString());
-});
+function ConnectCoreBlockChain() {
+    var WebSocketClient = require('websocket').client;
+    var client = new WebSocketClient();
 
-client.on('connect', function(connection) {
-    global.connectionBlockChain = connection;
-    console.log('Connect to E-Coin');
-    connection.on('error', function(error) {
-        console.log("Connection Error: " + error.toString());
+    client.on('connectFailed', function(error) {
+        console.log('Connect Error: ' + error.toString());
     });
-    connection.on('close', function() {
-        console.log('Connection Closed');
-    });
-    connection.on('message', function(message) {
-        if (message.type === 'utf8') {
-            global.message = message;
-            var data = JSON.parse(message.utf8Data);
-            if (data.header == 'tx_result') {
-                console.log(data);
-                if (data.result == 'Thanh cong') {
-                    // Send utf
-                }
-                else {
-                    if (data.result == 'Dang xu ly') {
-                        //Update db
+
+    client.on('connect', function(connection) {
+        global.connectionBlockChain = connection;
+        console.log('Connect to E-Coin');
+        connection.on('error', function(error) {
+            console.log("Connection Error: " + error.toString());
+        });
+        connection.on('close', function() {
+            console.log('Connection Closed');
+            ConnectCoreBlockChain();
+        });
+        connection.on('message', function(message) {
+            if (message.type === 'utf8') {
+                global.message = message;
+                var data = JSON.parse(message.utf8Data);
+                if (data.header == 'tx_result') {
+                    console.log(data);
+                    if (data.result == 'Thanh cong') {
+                        // Lay id cua don hang
+                        // Tim id cua user
+                        // Tim connection cua user
+                        // Gui thong bao
+                        // Updatedb trang thai don hang da thanh toan
                     }
                     else {
-                        // Send utf không thành công
+                        if (data.result == 'Dang xu ly') {
+                            //Update db
+                        }
+                        else {
+                            // Send utf không thành công
+                        }
                     }
                 }
             }
-        }
+        });
+        connection.sendUTF(JSON.stringify({
+            header: 'follow',
+            pubKeyHash: global.addressWalletStore
+        }));
     });
-});
 
-client.connect('ws://eblockchain1.herokuapp.com');
+    client.connect('ws://eblockchain5.herokuapp.com');
+}
+
+ConnectCoreBlockChain();
 
 // for app
 var app = express();

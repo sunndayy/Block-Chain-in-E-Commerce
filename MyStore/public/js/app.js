@@ -4,7 +4,6 @@ $(document).ready(function() {
     console.log("Da ket noi");
   };
   ws.onmessage = function(evt) {
-    console.log(evt.data);
     alert(evt.data);
   };
   ws.onerror = function(evt) {

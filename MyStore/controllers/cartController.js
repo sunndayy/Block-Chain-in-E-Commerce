@@ -275,7 +275,7 @@ router.post('/cart', function(req, res) {
     var pubKey = key.getPublic('hex');
     var pubKeyHash = sha256(pubKey);
     var utxos;
-    var totalMoney = req.body.total;
+    var totalMoney = parseInt(req.body.total);
     var totalInput = 0;
     var txIns = [], txOuts, tx;
     var senderSign;
@@ -291,7 +291,6 @@ router.post('/cart', function(req, res) {
       if (message != null && message.type === 'utf8') {
         utxos = JSON.parse(message.utf8Data)['utxos'];
 
-        totalMoney = totalMoney * 1.01;
         for (var k = 0; k < utxos.length; k++) {
           if (!utxos[k].isLocked) {
             totalInput += utxos[k].money;
@@ -299,7 +298,7 @@ router.post('/cart', function(req, res) {
               preHashTx: utxos[k].preHashTx,
               outputIndex: utxos[k].outputIndex
             });
-            if (totalInput > totalMoney) {
+            if (totalInput >= totalMoney * 1.01) {
               break;
             }
           }
@@ -310,7 +309,7 @@ router.post('/cart', function(req, res) {
           money: totalMoney,
         }, {
           pubKeyHash: pubKeyHash,
-          money: totalInput - totalMoney
+          money: totalInput - 1.01 * totalMoney
         }];
 
         tx = {
@@ -326,13 +325,6 @@ router.post('/cart', function(req, res) {
         };
 
         tx.senderSign = senderSign;
-
-        // console.log(totalInput);
-        // console.log(totalMoney);
-        // console.log(totalInput - totalMoney);
-        // console.log(utxos);
-
-        console.log(JSON.stringify(tx));
 
         connectionBlockChain.sendUTF(JSON.stringify({
           header: 'tx',
