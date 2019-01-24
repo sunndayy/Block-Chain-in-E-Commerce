@@ -159,25 +159,128 @@ router.get('/myCartPage', (req, res) => {
 });
 
 router.get('/payForm', (req, res) => {
-  res.render('cart/payForm');
+  var Items = {
+    idCart: req.query.id,
+    total: req.query.total
+  };
+  res.render('cart/payForm', Items);
 });
 
 router.post('/cart', function(req, res) {
-  var p1 = cartRepo.createOrder(req.session.user.id);
-  Promise.all([p1]).then(([p1Rows]) => {
-    var p2 = cartRepo.getLastOrderId(req.session.user.id);
+  var idCart = req.body.idCart;
+  if (!idCart) {
+    var p1 = cartRepo.createOrder(req.session.user.id, req.body.fullname, req.body.address, req.body.telephone);
+    Promise.all([p1]).then(([p1Rows]) => {
+      var p2 = cartRepo.getLastOrderId(req.session.user.id);
+  
+      var privKey = req.body.privKey;
+      var key = ec.keyFromPrivate(privKey, 'hex');
+      var pubKey = key.getPublic('hex');
+      var pubKeyHash = sha256(pubKey);
+      var utxos;
+      var totalMoney = 0;
+      var totalInput = 0;
+      var txIns = [], txOuts, tx;
+      var senderSign;
+    
+      Promise.all([p2]).then(([p2Rows]) => {
+        for (i = 0; i < req.session.cart.length; i++) {
+          totalMoney += req.session.cart[i].price * req.session.cart[i].quantity;
+          var p3 = cartRepo.insertOrderItem(p2Rows[0].id, req.session.cart[i].id, req.session.cart[i].quantity, req.session.cart[i].price * req.session.cart[i].quantity);
+          Promise.all([p3]).then(([p3Rows]) => {
+            console.log("Inserted!");
+          });
+        }
+        var p4 = cartRepo.getBookId(p2Rows[0].id);
+        Promise.all([p4]).then(([p4Rows]) => {
+          for (i = 0; i < p4Rows.length; i++) {
+            var p5 = cartRepo.updateQuantity(p4Rows[i].product_id, p4Rows[i].quantity);
+            Promise.all([p5]).then(([p5Rows]) => {
+              console.log("Updated!");
+            });
+          }
+        });
 
+        connectionBlockChain.sendUTF(JSON.stringify({
+          header: 'get_utxos',
+          pubKeyHash: pubKeyHash
+        }));
+    
+        var triggerMessage;
+    
+        triggerMessage = setInterval(function () {
+          if (message != null && message.type === 'utf8') {
+            utxos = JSON.parse(message.utf8Data)['utxos'];
+
+            totalMoney = totalMoney * 1.01;
+            for (var k = 0; k < utxos.length; k++) {
+              if (!utxos[k].isLocked) {
+                totalInput += utxos[k].money;
+                txIns.push({
+                  preHashTx: utxos[k].preHashTx,
+                  outputIndex: utxos[k].outputIndex
+                });
+                if (totalInput > totalMoney) {
+                  break;
+                }
+              }
+            }
+      
+            txOuts = [{
+              pubKeyHash: addressWalletStore,
+              money: totalMoney,
+            }, {
+              pubKeyHash: pubKeyHash,
+              money: totalInput - totalMoney
+            }];
+      
+            tx = {
+              txIns: txIns,
+              txOuts: txOuts,
+              message: p2Rows[0].id.toString()
+            }
+      
+            senderSign = {
+              message: JSON.stringify(tx),
+              pubKey: pubKey,
+              signature: key.sign(sha256(JSON.stringify(tx), { asBytes: true }))
+            };
+      
+            tx.senderSign = senderSign;
+      
+            // console.log(totalInput);
+            // console.log(totalMoney);
+            // console.log(totalInput - totalMoney);
+            // console.log(utxos);
+
+            console.log(JSON.stringify(tx));
+      
+            connectionBlockChain.sendUTF(JSON.stringify({
+              header: 'tx',
+              tx: tx
+            }));
+
+            message = null;
+            req.session.cart = [];
+            clearInterval(triggerMessage);
+            res.redirect('/');
+          }
+        }, 100);
+      });
+    });
+  }
+  else {
     var privKey = req.body.privKey;
     var key = ec.keyFromPrivate(privKey, 'hex');
     var pubKey = key.getPublic('hex');
     var pubKeyHash = sha256(pubKey);
     var utxos;
-    var totalMoney = 0;
+    var totalMoney = req.body.total;
     var totalInput = 0;
     var txIns = [], txOuts, tx;
     var senderSign;
 
-    connection.sendUTF(JSON.stringify({
+    connectionBlockChain.sendUTF(JSON.stringify({
       header: 'get_utxos',
       pubKeyHash: pubKeyHash
     }));
@@ -187,75 +290,61 @@ router.post('/cart', function(req, res) {
     triggerMessage = setInterval(function () {
       if (message != null && message.type === 'utf8') {
         utxos = JSON.parse(message.utf8Data)['utxos'];
-        message = null;
-        clearInterval(triggerMessage);
-      }
-    }, 100);
 
-
-    Promise.all([p2]).then(([p2Rows]) => {
-      for (i = 0; i < req.session.cart.length; i++) {
-        totalMoney += req.session.cart[i].price * req.session.cart[i].quantity;
-        var p3 = cartRepo.insertOrderItem(p2Rows[0].id, req.session.cart[i].id, req.session.cart[i].quantity, req.session.cart[i].price * req.session.cart[i].quantity);
-        Promise.all([p3]).then(([p3Rows]) => {
-          console.log("Inserted!");
-        });
-      }
-      var p4 = cartRepo.getBookId(p2Rows[0].id);
-      Promise.all([p4]).then(([p4Rows]) => {
-        for (i = 0; i < p4Rows.length; i++) {
-          var p5 = cartRepo.updateQuantity(p4Rows[i].product_id, p4Rows[i].quantity);
-          Promise.all([p5]).then(([p5Rows]) => {
-            console.log("Updated!");
-          });
-        }
-      });
-
-      totalMoney = totalMoney * 1.01;
-      for (var k = 0; k < utxos.length; k++) {
-        if (!utxos[k].isLocked) {
-          totalInput += utxos[k].money;
-          txIns.push({
-            preHashTx: utxos[k].preHashTx,
-            outputIndex: utxos[k].outputIndex
-          });
-          if (totalInput > totalMoney) {
-            break;
+        totalMoney = totalMoney * 1.01;
+        for (var k = 0; k < utxos.length; k++) {
+          if (!utxos[k].isLocked) {
+            totalInput += utxos[k].money;
+            txIns.push({
+              preHashTx: utxos[k].preHashTx,
+              outputIndex: utxos[k].outputIndex
+            });
+            if (totalInput > totalMoney) {
+              break;
+            }
           }
         }
+
+        txOuts = [{
+          pubKeyHash: addressWalletStore,
+          money: totalMoney,
+        }, {
+          pubKeyHash: pubKeyHash,
+          money: totalInput - totalMoney
+        }];
+
+        tx = {
+          txIns: txIns,
+          txOuts: txOuts,
+          message: idCart
+        }
+
+        senderSign = {
+          message: JSON.stringify(tx),
+          pubKey: pubKey,
+          signature: key.sign(sha256(JSON.stringify(tx), { asBytes: true }))
+        };
+
+        tx.senderSign = senderSign;
+
+        // console.log(totalInput);
+        // console.log(totalMoney);
+        // console.log(totalInput - totalMoney);
+        // console.log(utxos);
+
+        console.log(JSON.stringify(tx));
+
+        connectionBlockChain.sendUTF(JSON.stringify({
+          header: 'tx',
+          tx: tx
+        }));
+
+        message = null;
+        clearInterval(triggerMessage);
+        res.redirect('/');
       }
-
-      txOuts = [{
-        pubKeyHash: addressWalletStore,
-        money: totalMoney,
-      }, {
-        pubKeyHash: pubKeyHash,
-        money: totalInput - totalMoney
-      }];
-
-      tx = {
-        txIns: txIns,
-        txOuts: txOuts,
-        message: p2Rows[0].id.toString()
-      }
-
-      senderSign = {
-        message: JSON.stringify(tx),
-        pubKey: pubKey,
-        signature: key.sign(sha256(JSON.stringify(tx), { asBytes: true }))
-      };
-
-      tx.senderSign = senderSign;
-
-      connection.sendUTF(JSON.stringify({
-        header: 'tx',
-        tx: tx
-      }));
-
-      req.session.cart = [];
-      res.redirect('/');
-    });
-  });
+    }, 100);
+  }
 });
 
 router.get('/viewHistory', (req, res) => {

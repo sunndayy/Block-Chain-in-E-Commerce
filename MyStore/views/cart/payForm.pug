@@ -10,13 +10,28 @@ head
   link(rel='stylesheet' type='text/css' href='/css/login.css')
   link(rel='shortcut icon' type='image/x-icon' href='/images/ic_book.png')
 #wrap.container
-  .row(style='margin-bottom: 20px;')
-    .col-md-6.col-md-offset-3
-      form.form(action='/cart' method='post' accept-charset='utf-8' role='form')
-        legend Th&ocirc;ng tin kh&aacute;ch h&agrave;ng
-        input.form-control.input-lg(type='text' name='name' value='' placeholder='Nhập Họ Tên' required)
-        input.form-control.input-lg(type='text' name='address' value='' placeholder='Nhập Địa Chỉ' required)
-        input.form-control.input-lg(type='number' name='telephone' value='' placeholder='Nhập Số Điện Thoại' required)
-        input.form-control.input-lg(type='password' name='privKey' value='' placeholder='Nhập khóa bí mật' required)
-        button.btn.btn-lg.btn-primary.btn-block.signup-btn(type='submit')
-          | Thanh to&aacute;n
+  if (!idCart)
+    .row(style='margin-bottom: 20px;')
+      .col-md-6.col-md-offset-3
+        form.form(action='/cart' method='post' accept-charset='utf-8' role='form')
+          legend Thông tin thanh toán
+          input.form-control.input-lg(type='text' name='fullname' value='' placeholder='Nhập Họ Tên' required)
+          input.form-control.input-lg(type='text' name='address' value='' placeholder='Nhập Địa Chỉ' required)
+          input.form-control.input-lg(type='text' name='telephone' value='' placeholder='Nhập Số Điện Thoại' required)
+          input.form-control.input-lg(type='password' name='privKey' value='' placeholder='Nhập khóa bí mật' required)
+          button.btn.btn-lg.btn-primary.btn-block.signup-btn(type='submit')
+            | Thanh to&aacute;n
+  else
+    .row(style='margin-bottom: 20px;')
+      .col-md-6.col-md-offset-3
+        form.form(action='/cart' method='post' accept-charset='utf-8' role='form')
+          legend Thông tin thanh toán
+          input.form-control.input-lg(type='number' name='idCart' value=idCart placeholder='Mã đơn hàng' required readonly)
+          input.form-control.input-lg(type='number' name='total' value=total placeholder='Tổng tiền' required readonly)
+          input.form-control.input-lg(type='password' name='privKey' value='' placeholder='Nhập khóa bí mật' required)
+          button.btn.btn-lg.btn-primary.btn-block.signup-btn(type='submit')
+            | Thanh to&aacute;n
+  .row(style='margin-top: 15px;')
+    .col-md-12.control
+      div(style='border-top: 1px solid#888; padding-top:15px; font-size:85%; width: 50%; text-align: center; margin: 0 auto;')
+        | Chúng tôi sẽ lấy phí 1% để duy trì hệ thống thanh toán 
