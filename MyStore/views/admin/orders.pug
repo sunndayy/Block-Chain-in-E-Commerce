@@ -2,11 +2,19 @@ each item in items
   .col-md-9.col-sm-9.col-xs-12(style='margin-top: 10px;')
     if (item.status == 'Chưa giao')
       li.list-group-item(style='background: #FF0000; color: #FFFFFF;')
+        | Mã đơn hàng: #{item.id}
+        br
         | User ID: #{item.user_id}
         br
-        | Trạng thái: #{item.status}
+        | Họ tên: #{item.fullname}
+        br
+        | Địa chỉ: #{item.address}
+        br
+        | Số điện thoại: #{item.phone}
         br
         | Ngày mua: #{item.date}
+        br
+        | Trạng thái: #{item.status}
         br
         | Trạng thái thanh toán: #{item.payStatus}
     if (item.status == 'Đang giao')

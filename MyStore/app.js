@@ -48,7 +48,7 @@ var adminController = require('./controllers/adminController');
 // for web socket
 global.addressWalletStore = '99c8ca5ba6196b7eed7b41cc5d5de535896410b9317f3d4850e669c5cfcf8ec9';
 global.message = null;
-global.connection = null;
+global.connectionBlockChain = null;
 var WebSocketClient = require('websocket').client;
 var client = new WebSocketClient();
 
@@ -57,7 +57,7 @@ client.on('connectFailed', function(error) {
 });
 
 client.on('connect', function(connection) {
-    global.connection = connection;
+    global.connectionBlockChain = connection;
     console.log('Connect to E-Coin');
     connection.on('error', function(error) {
         console.log("Connection Error: " + error.toString());
@@ -71,12 +71,23 @@ client.on('connect', function(connection) {
             var data = JSON.parse(message.utf8Data);
             if (data.header == 'tx_result') {
                 console.log(data);
+                if (data.result == 'Thanh cong') {
+                    // Send utf
+                }
+                else {
+                    if (data.result == 'Dang xu ly') {
+                        //Update db
+                    }
+                    else {
+                        // Send utf không thành công
+                    }
+                }
             }
         }
     });
 });
 
-client.connect('ws://eblockchain5.herokuapp.com');
+client.connect('ws://eblockchain1.herokuapp.com');
 
 // for app
 var app = express();
@@ -135,7 +146,7 @@ wsServer.on("request", req => {
                     delete users[id];
                 }
             });
-            connection.sendUTF(id);
+            // connection.sendUTF(id);
         } else {
             req.reject();
         }
