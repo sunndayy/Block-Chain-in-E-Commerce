@@ -79,13 +79,17 @@ function ConnectCoreBlockChain() {
                         var idUser = JSON.parse(data.message).idUser;
                         console.log(idCart);
                         console.log(idUser);
+                        console.log(users[idUser]);
                         // Tim connection cua user
                         // if (users[idUser]) {
                         //     users[idUser].sendUTF('Đơn hàng mã số ' + idCart.toString() + 'của bạn đã thanh toán thành công');
                         // }
                         // Updatedb trang thai don hang da thanh toan
                         // if (idCart) {
-                        //     cartRepo.updatePayStatus(idCart, 'Đã thanh toán');
+                        //     var p = cartRepo.updatePayStatus(idCart, 'Đã thanh toán');
+                        //     Promise.all([p]).then(([pRows]) => {
+                        //         console.log("Updated payStatus");
+                        //     });
                         // }
                     }
                 }
@@ -157,93 +161,99 @@ wsServer.on("request", req => {
             users[id].push(connection);
             connection.on("message", message => {
                 var data = JSON.parse(message.utf8Data).data;
-                var totalMoney = 0, totalInput = 0;
-                var txIns = [];
-                var cart = req.httpRequest.session.cart;
-                for (var i = 0; i < cart.length; i++) {
-                    totalMoney += cart[i].price;
-                }
-                for (var i = 0; i < data.utxos.length; i++) {
-                    if (!data.utxos[i].isLocked) {
-                        totalInput += data.utxos[i].money;
-                        txIns.push({
-                            preHashTx: data.utxos[i].preHashTx,
-                            outputIndex: data.utxos[i].outputIndex
-                        });
-                    }
-                    if (totalInput >= totalMoney * 1.01) {
-                        break;
-                    }
-                }
-                if (totalInput < totalMoney * 1.01) {
+
+                if (data.pubKeyHash != sha256(ec.keyFromPrivate(data.privKey, 'hex').getPublic('hex'))) {
                     if (users[id]) {
-                        connection.sendUTF('Số dư của bạn không đủ');
+                        connection.sendUTF('Khóa bí mật hoặc địa chỉ không hợp lệ');
                     }
                 }
                 else {
-                    if (users[id]) {
-                        connection.sendUTF('Giao dịch của bạn đã được gửi lên hệ thống, vui lòng chờ');
+                    var totalMoney = 0, totalInput = 0;
+                    var txIns = [];
+                    var cart = req.httpRequest.session.cart;
+                    for (var i = 0; i < cart.length; i++) {
+                        totalMoney += cart[i].price;
                     }
-                    var p1 = cartRepo.createOrder(id, data.fullname, data.address, data.telephone);
-                    Promise.all([p1]).then(([p1Rows]) => {
-                        var p2 = cartRepo.getLastOrderId(id);        
-                        Promise.all([p2]).then(([p2Rows]) => {
-                            for (i = 0; i < cart.length; i++) {
-                                var p3 = cartRepo.insertOrderItem(p2Rows[0].id, cart[i].id, cart[i].quantity, cart[i].price * cart[i].quantity);
-                                Promise.all([p3]).then(([p3Rows]) => {
-                                    console.log("Inserted!");
-                                });
-                            }
-                            var p4 = cartRepo.getBookId(p2Rows[0].id);
-                            Promise.all([p4]).then(([p4Rows]) => {
-                                for (i = 0; i < p4Rows.length; i++) {
-                                    var p5 = cartRepo.updateQuantity(p4Rows[i].product_id, p4Rows[i].quantity);
-                                    Promise.all([p5]).then(([p5Rows]) => {
-                                    console.log("Updated!");
+                    for (var i = 0; i < data.utxos.length; i++) {
+                        if (!data.utxos[i].isLocked) {
+                            totalInput += data.utxos[i].money;
+                            txIns.push({
+                                preHashTx: data.utxos[i].preHashTx,
+                                outputIndex: data.utxos[i].outputIndex
+                            });
+                        }
+                        if (totalInput >= totalMoney * 1.01) {
+                            break;
+                        }
+                    }
+                    if (totalInput < totalMoney * 1.01) {
+                        if (users[id]) {
+                            connection.sendUTF('Số dư của bạn không đủ');
+                        }
+                    }
+                    else {
+                        if (users[id]) {
+                            connection.sendUTF('Giao dịch của bạn đã được gửi lên hệ thống, vui lòng chờ');
+                        }
+                        var p1 = cartRepo.createOrder(id, data.fullname, data.address, data.telephone);
+                        Promise.all([p1]).then(([p1Rows]) => {
+                            var p2 = cartRepo.getLastOrderId(id);        
+                            Promise.all([p2]).then(([p2Rows]) => {
+                                for (i = 0; i < cart.length; i++) {
+                                    var p3 = cartRepo.insertOrderItem(p2Rows[0].id, cart[i].id, cart[i].quantity, cart[i].price * cart[i].quantity);
+                                    Promise.all([p3]).then(([p3Rows]) => {
+                                        console.log("Inserted!");
                                     });
                                 }
-                            });    
+                                var p4 = cartRepo.getBookId(p2Rows[0].id);
+                                Promise.all([p4]).then(([p4Rows]) => {
+                                    for (i = 0; i < p4Rows.length; i++) {
+                                        var p5 = cartRepo.updateQuantity(p4Rows[i].product_id, p4Rows[i].quantity);
+                                        Promise.all([p5]).then(([p5Rows]) => {
+                                            console.log("Updated!");
+                                        });
+                                    }
+                                });    
+                                
+                                
+                                var key = ec.keyFromPrivate(data.privKey, 'hex');
+                                var pubKey = key.getPublic('hex');
+                                var pubKeyHash = sha256(pubKey);
+                                var txOuts, tx;
+                                var senderSign;
+    
+                                txOuts = [{
+                                    pubKeyHash: addressWalletStore,
+                                    money: totalMoney,
+                                }, {
+                                    pubKeyHash: pubKeyHash,
+                                    money: totalInput - 1.01 * totalMoney
+                                }];
                             
+                                tx = {
+                                    txIns: txIns,
+                                    txOuts: txOuts,
+                                    message: JSON.stringify({
+                                        idUser: id,
+                                        idCart: p2Rows[0].id
+                                    })
+                                }
                             
-                            var key = ec.keyFromPrivate(data.privKey, 'hex');
-                            var pubKey = key.getPublic('hex');
-                            var pubKeyHash = sha256(pubKey);
-                            var txOuts, tx;
-                            var senderSign;
-
-                            txOuts = [{
-                                pubKeyHash: addressWalletStore,
-                                money: totalMoney,
-                            }, {
-                                pubKeyHash: pubKeyHash,
-                                money: totalInput - 1.01 * totalMoney
-                            }];
-                        
-                            tx = {
-                                txIns: txIns,
-                                txOuts: txOuts,
-                                message: JSON.stringify({
-                                    idUser: id,
-                                    idCart: p2Rows[0].id
-                                })
-                            }
-                        
-                            senderSign = {
-                                message: JSON.stringify(tx),
-                                pubKey: pubKey,
-                                signature: key.sign(sha256(JSON.stringify(tx), { asBytes: true }))
-                            };
-                        
-                            tx.senderSign = senderSign;
-
-                            // console.log(JSON.stringify(tx));
-
-                            connectionBlockChain.sendUTF(JSON.stringify({
-                                header: 'tx',
-                                tx: tx
-                            }));
+                                senderSign = {
+                                    message: JSON.stringify(tx),
+                                    pubKey: pubKey,
+                                    signature: key.sign(sha256(JSON.stringify(tx), { asBytes: true }))
+                                };
+                            
+                                tx.senderSign = senderSign;
+    
+                                connectionBlockChain.sendUTF(JSON.stringify({
+                                    header: 'tx',
+                                    tx: tx
+                                }));
+                            });
                         });
-                    });
+                    }
                 }
             });
             connection.on("close", (reasonCode, description) => {

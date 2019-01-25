@@ -26,6 +26,7 @@ wsBlockChain.onmessage = function(evt) {
       address: document.getElementsByName('address')[0].value,
       telephone: document.getElementsByName('telephone')[0].value,
       privKey: document.getElementsByName('privKey')[0].value,
+      pubKeyHash: document.getElementsByName('addressWallet')[0].value,
       utxos: utxos
     }
   }))
