@@ -73,24 +73,26 @@ function ConnectCoreBlockChain() {
                 if (data.header == 'tx_result') {
                     console.log(data);
                     if (data.result == 'Thanh cong') {
-                        // Lay id cua don hang
-                        var idCart = JSON.parse(data.message).idCart;
-                        // Tim id cua user
-                        var idUser = JSON.parse(data.message).idUser;
-                        console.log(idCart);
-                        console.log(idUser);
-                        console.log(users[idUser]);
-                        // Tim connection cua user
-                        // if (users[idUser]) {
-                        //     users[idUser].sendUTF('Đơn hàng mã số ' + idCart.toString() + 'của bạn đã thanh toán thành công');
-                        // }
-                        // Updatedb trang thai don hang da thanh toan
-                        // if (idCart) {
-                        //     var p = cartRepo.updatePayStatus(idCart, 'Đã thanh toán');
-                        //     Promise.all([p]).then(([pRows]) => {
-                        //         console.log("Updated payStatus");
-                        //     });
-                        // }
+                        if (data.message) {
+                            // Lay id cua don hang
+                            var idCart = JSON.parse(data.message).idCart;
+                            // Tim id cua user
+                            var idUser = JSON.parse(data.message).idUser;
+                            console.log(idCart);
+                            console.log(idUser);
+                            console.log(users[idUser]);
+                            // Tim connection cua user
+                            if (users[idUser]) {
+                                users[idUser].sendUTF('Đơn hàng mã số ' + idCart.toString() + 'của bạn đã thanh toán thành công');
+                            }
+                            // Updatedb trang thai don hang da thanh toan
+                            if (idCart) {
+                                var p = cartRepo.updatePayStatus(idCart, 'Đã thanh toán');
+                                Promise.all([p]).then(([pRows]) => {
+                                    console.log("Updated payStatus");
+                                });
+                            }
+                        }
                     }
                 }
             }
