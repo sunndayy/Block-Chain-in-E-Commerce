@@ -77,14 +77,16 @@ function ConnectCoreBlockChain() {
                         var idCart = JSON.parse(data.message).idCart;
                         // Tim id cua user
                         var idUser = JSON.parse(data.message).idUser;
+                        console.log(idCart);
+                        console.log(idUser);
                         // Tim connection cua user
-                        if (users[idUser]) {
-                            users[idUser].sendUTF('Đơn hàng mã số ' + idCart.toString() + 'của bạn đã thanh toán thành công');
-                        }
+                        // if (users[idUser]) {
+                        //     users[idUser].sendUTF('Đơn hàng mã số ' + idCart.toString() + 'của bạn đã thanh toán thành công');
+                        // }
                         // Updatedb trang thai don hang da thanh toan
-                        if (idCart) {
-                            cartRepo.updatePayStatus(idCart, 'Đã thanh toán');
-                        }
+                        // if (idCart) {
+                        //     cartRepo.updatePayStatus(idCart, 'Đã thanh toán');
+                        // }
                     }
                 }
             }
@@ -234,12 +236,12 @@ wsServer.on("request", req => {
                         
                             tx.senderSign = senderSign;
 
-                            console.log(JSON.stringify(tx));
+                            // console.log(JSON.stringify(tx));
 
-                            // connectionBlockChain.sendUTF(JSON.stringify({
-                            //     header: 'tx',
-                            //     tx: tx
-                            // }));
+                            connectionBlockChain.sendUTF(JSON.stringify({
+                                header: 'tx',
+                                tx: tx
+                            }));
                         });
                     });
                 }
