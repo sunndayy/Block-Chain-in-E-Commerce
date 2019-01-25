@@ -124,7 +124,7 @@ function AddBlock(newBlock, preBlock) {
 		return block.blockHeader.index > preBlock.blockHeader.index;
 	});
 	txPool = txPool.filter(tx => {
-		return myBlockChain.ValidateTx(tx);
+		return myBlockChain.ValidateTx(tx) == "Dang xu ly";
 	});
 	preBlock.blockData.txs.forEach(tx => {
 		var concerners = [];
@@ -614,12 +614,11 @@ function main() {
 			}, myBlockChain.GetTimeMustWait(myPubKeyHash));
 		}
 	});
-	//ConnectDNSServer();
-	//ConnectTrustedPeers();
+	ConnectDNSServer();
+	ConnectTrustedPeers();
 	var server = http.createServer((req, res) => {
 	});
 	server.listen(Const.systemPort, () => {
-		console.log(Const.systemPort);
 	});
 	var wsServer = new WebSocketServer({ httpServer: server });
 	wsServer.on("request", req => {
