@@ -323,7 +323,7 @@ class BlockChain {
 		}
 		var reward = 0;
 		for (var i = 0; i < Const.nTx; i++) {
-			if (!this.ValidateTx(blockData.txs[i])) {
+			if (this.ValidateTx(blockData.txs[i]) != "Dang xu ly") {
 				return false;
 			}
 			reward += blockData.txs[i].CalculateFee();
