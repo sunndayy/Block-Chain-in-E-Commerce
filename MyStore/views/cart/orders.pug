@@ -16,8 +16,5 @@ each item in items
       | T&#x1ED5;ng gi&aacute; ti&#x1EC1;n: #{item.price} &dstrok;
       br
       | Trạng thái thanh toán: #{item.payStatus}
-  if (item.payStatus == 'Chưa thanh toán')
-    a(href='/cart/payForm?id=' + item.id + '&total=' + item.price)
-      button.btn.btn-lg.btn-primary.btn-block.signup-btn Thanh toán
       
       

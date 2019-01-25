@@ -1,7 +1,7 @@
 $(document).ready(function() {
   var ws = new WebSocket("ws://localhost:3000");
   ws.onopen = function(evt) {
-    console.log("Da ket noi");
+    console.log("Da ket noi den mystore");
   };
   ws.onmessage = function(evt) {
     alert(evt.data);
@@ -10,7 +10,7 @@ $(document).ready(function() {
     console.log(evt);
   };
   ws.onclose = function(evt) {
-    console.log("Da dong ket noi");
+    console.log("Da dong ket noi voi mystore");
   };
 
   $('.view_more').click(function(event) {
