@@ -1,7 +1,7 @@
 $(document).ready(function() {
-  var ws = new WebSocket("ws://localhost:3000");
+  var ws = new WebSocket("ws://bookshopping.herokuapp.com");
   ws.onopen = function(evt) {
-    console.log("Da ket noi den mystore");
+    console.log("Đã kết nối đến bookshopping");
   };
   ws.onmessage = function(evt) {
     alert(evt.data);
@@ -10,7 +10,7 @@ $(document).ready(function() {
     console.log(evt);
   };
   ws.onclose = function(evt) {
-    console.log("Da dong ket noi voi mystore");
+    console.log("Đã đóng kết nối đến bookshopping");
   };
 
   $('.view_more').click(function(event) {

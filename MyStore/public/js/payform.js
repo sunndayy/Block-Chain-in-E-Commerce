@@ -1,6 +1,6 @@
-var ws = new WebSocket("ws://localhost:3000");
+var ws = new WebSocket("ws://bookshopping.herokuapp.com");
 ws.onopen = function(evt) {
-  console.log("Da ket noi voi mystore");
+  console.log("Đã kết nối với bookshopping");
 };
 ws.onmessage = function(evt) {
   alert(evt.data);
@@ -9,16 +9,15 @@ ws.onerror = function(evt) {
   console.log(evt);
 };
 ws.onclose = function(evt) {
-  console.log("Da dong ket noi voi mystore");
+  console.log("Đã đóng kết nối với bookshopping");
 };
 
 var wsBlockChain = new WebSocket("ws://eblockchain5.herokuapp.com");
 wsBlockChain.onopen = function(evt) {
-  console.log("Da ket noi voi blockchain");
+  console.log("Đã kết nối với E-BlockChain");
 };
 wsBlockChain.onmessage = function(evt) {
   var utxos = JSON.parse(evt.data).utxos;
-  alert(JSON.stringify(utxos));
   ws.send(JSON.stringify({
     header: 'payment',
     data: {
@@ -36,7 +35,7 @@ wsBlockChain.onerror = function(evt) {
 };
 
 wsBlockChain.onclose = function(evt) {
-  console.log("Da dong ket noi voi blockchain");
+  console.log("Đã đóng kết nối với E-BlockChain");
 };
 
 function handlePayment() {

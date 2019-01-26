@@ -1,5 +1,4 @@
 global.express = require('express');
-
 global.session = require('express-session');
 var MySQLStore = require('express-mysql-session')(session);
 var http = require("http");
@@ -20,6 +19,7 @@ global.sessionStore = new MySQLStore({
     }
   }
 });
+
 global.router = express.Router();
 
 var sessionParser = session({
@@ -29,8 +29,8 @@ var sessionParser = session({
     resave: false,
     saveUninitialized: false
 });
-router.use(sessionParser);
 
+router.use(sessionParser);
 global.Id = 0;
 
 var parseurl = require('parseurl');
@@ -58,13 +58,13 @@ function ConnectCoreBlockChain() {
     });
 
     client.on('connect', function(connection) {
-        console.log('My store connect to E-Coin');
+        console.log('bookshopping kết nối tới E-BlockChain');
         connectionBlockChain = connection;
         connection.on('error', function(error) {
             console.log("Connection Error: " + error.toString());
         });
         connection.on('close', function() {
-            console.log('Connection Closed');
+            console.log('bookshopping đóng kết nối tới E-BlockChain');
             ConnectCoreBlockChain();
         });
         connection.on('message', function(message) {
@@ -78,9 +78,6 @@ function ConnectCoreBlockChain() {
                             var idCart = JSON.parse(data.message).idCart;
                             // Tim id cua user
                             var idUser = JSON.parse(data.message).idUser;
-                            console.log(idCart);
-                            console.log(idUser);
-                            console.log(users[idUser]);
                             // Tim connection cua user
                             if (users[idUser]) {
                                 users[idUser].sendUTF('Đơn hàng mã số ' + idCart.toString() + 'của bạn đã thanh toán thành công');
@@ -160,7 +157,7 @@ wsServer.on("request", req => {
             if (!users[id]) {
                 users[id] = [];
             }
-            users[id].push(connection);
+            users[id] = connection;
             connection.on("message", message => {
                 var data = JSON.parse(message.utf8Data).data;
 
@@ -251,7 +248,7 @@ wsServer.on("request", req => {
     
                                 connectionBlockChain.sendUTF(JSON.stringify({
                                     header: 'tx',
-                                    tx: tx
+                                    tx: tx,
                                 }));
                             });
                         });
@@ -259,7 +256,7 @@ wsServer.on("request", req => {
                 }
             });
             connection.on("close", (reasonCode, description) => {
-                console.log('close');
+                console.log('Client đóng kết nối');
                 var index = users[id].indexOf(connection);
                 users[id].splice(index, 1);
                 if (users[id].length == 0) {
