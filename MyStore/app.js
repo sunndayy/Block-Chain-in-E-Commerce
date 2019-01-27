@@ -1,5 +1,4 @@
 global.express = require('express');
-
 global.session = require('express-session');
 var MySQLStore = require('express-mysql-session')(session);
 var http = require("http");
@@ -20,6 +19,7 @@ global.sessionStore = new MySQLStore({
     }
   }
 });
+
 global.router = express.Router();
 
 var sessionParser = session({
@@ -29,8 +29,8 @@ var sessionParser = session({
     resave: false,
     saveUninitialized: false
 });
-router.use(sessionParser);
 
+router.use(sessionParser);
 global.Id = 0;
 
 var parseurl = require('parseurl');
@@ -46,9 +46,8 @@ var cartController = require('./controllers/cartController');
 var adminController = require('./controllers/adminController');
 
 // for web socket
-global.addressWalletStore = '1e095aff6eef007cb07577f0646e31b3756e6fe8d505462b477cdd273bc2243a';
-global.message = null;
-global.connectionBlockChain = null;
+var addressWalletStore = '1e095aff6eef007cb07577f0646e31b3756e6fe8d505462b477cdd273bc2243a';
+var connectionBlockChain = null;
 
 function ConnectCoreBlockChain() {
     var WebSocketClient = require('websocket').client;
@@ -59,34 +58,37 @@ function ConnectCoreBlockChain() {
     });
 
     client.on('connect', function(connection) {
-        global.connectionBlockChain = connection;
-        console.log('Connect to E-Coin');
+        console.log('bookshopping kết nối tới E-BlockChain');
+        connectionBlockChain = connection;
         connection.on('error', function(error) {
             console.log("Connection Error: " + error.toString());
         });
         connection.on('close', function() {
-            console.log('Connection Closed');
+            console.log('bookshopping đóng kết nối tới E-BlockChain');
             ConnectCoreBlockChain();
         });
         connection.on('message', function(message) {
             if (message.type === 'utf8') {
-                global.message = message;
                 var data = JSON.parse(message.utf8Data);
                 if (data.header == 'tx_result') {
                     console.log(data);
                     if (data.result == 'Thanh cong') {
-                        // Lay id cua don hang
-                        // Tim id cua user
-                        // Tim connection cua user
-                        // Gui thong bao
-                        // Updatedb trang thai don hang da thanh toan
-                    }
-                    else {
-                        if (data.result == 'Dang xu ly') {
-                            //Update db
-                        }
-                        else {
-                            // Send utf không thành công
+                        if (data.message) {
+                            // Lay id cua don hang
+                            var idCart = JSON.parse(data.message).idCart;
+                            // Tim id cua user
+                            var idUser = JSON.parse(data.message).idUser;
+                            // Tim connection cua user
+                            if (users[idUser]) {
+                                users[idUser].sendUTF('Đơn hàng mã số ' + idCart.toString() + ' của bạn đã thanh toán thành công');
+                            }
+                            // Updatedb trang thai don hang da thanh toan
+                            if (idCart) {
+                                var p = cartRepo.updatePayStatus(idCart, 'Đã thanh toán');
+                                Promise.all([p]).then(([pRows]) => {
+                                    console.log("Updated payStatus");
+                                });
+                            }
                         }
                     }
                 }
@@ -94,7 +96,7 @@ function ConnectCoreBlockChain() {
         });
         connection.sendUTF(JSON.stringify({
             header: 'follow',
-            pubKeyHash: global.addressWalletStore
+            pubKeyHash: addressWalletStore
         }));
     });
 
@@ -102,6 +104,12 @@ function ConnectCoreBlockChain() {
 }
 
 ConnectCoreBlockChain();
+
+// for request client
+var cartRepo = require('./repos/cartRepo');
+var sha256 = require('sha256');
+var EC = require('elliptic').ec;
+var ec = new EC('secp256k1');
 
 // for app
 var app = express();
@@ -146,21 +154,109 @@ wsServer.on("request", req => {
         if (req.httpRequest.session.user) {
             var connection = req.accept(null, req.origin);
             var id = req.httpRequest.session.user.id;
-            if (!users[id]) {
-                users[id] = [];
-            }
-            users[id].push(connection);
+            users[id] = connection;
+
             connection.on("message", message => {
+                var data = JSON.parse(message.utf8Data).data;
+
+                if (data.pubKeyHash != sha256(ec.keyFromPrivate(data.privKey, 'hex').getPublic('hex'))) {
+                    if (users[id]) {
+                        users[id].sendUTF('Khóa bí mật hoặc địa chỉ không hợp lệ');
+                    }
+                }
+                else {
+                    var totalMoney = 0, totalInput = 0;
+                    var txIns = [];
+                    var cart = req.httpRequest.session.cart;
+                    for (var i = 0; i < cart.length; i++) {
+                        totalMoney += cart[i].price;
+                    }
+                    for (var i = 0; i < data.utxos.length; i++) {
+                        if (!data.utxos[i].isLocked) {
+                            totalInput += data.utxos[i].money;
+                            txIns.push({
+                                preHashTx: data.utxos[i].preHashTx,
+                                outputIndex: data.utxos[i].outputIndex
+                            });
+                        }
+                        if (totalInput >= totalMoney * 1.01) {
+                            break;
+                        }
+                    }
+                    if (totalInput < totalMoney * 1.01) {
+                        if (users[id]) {
+                            users[id].sendUTF('Số dư của bạn không đủ');
+                        }
+                    }
+                    else {
+                        if (users[id]) {
+                            users[id].sendUTF('Giao dịch của bạn đã được gửi lên hệ thống, vui lòng chờ');
+                        }
+                        var p1 = cartRepo.createOrder(id, data.fullname, data.address, data.telephone);
+                        Promise.all([p1]).then(([p1Rows]) => {
+                            var p2 = cartRepo.getLastOrderId(id);        
+                            Promise.all([p2]).then(([p2Rows]) => {
+                                for (i = 0; i < cart.length; i++) {
+                                    var p3 = cartRepo.insertOrderItem(p2Rows[0].id, cart[i].id, cart[i].quantity, cart[i].price * cart[i].quantity);
+                                    Promise.all([p3]).then(([p3Rows]) => {
+                                        console.log("Inserted!");
+                                    });
+                                }
+                                var p4 = cartRepo.getBookId(p2Rows[0].id);
+                                Promise.all([p4]).then(([p4Rows]) => {
+                                    for (i = 0; i < p4Rows.length; i++) {
+                                        var p5 = cartRepo.updateQuantity(p4Rows[i].product_id, p4Rows[i].quantity);
+                                        Promise.all([p5]).then(([p5Rows]) => {
+                                            console.log("Updated!");
+                                        });
+                                    }
+                                });    
+                                
+                                
+                                var key = ec.keyFromPrivate(data.privKey, 'hex');
+                                var pubKey = key.getPublic('hex');
+                                var pubKeyHash = sha256(pubKey);
+                                var txOuts, tx;
+                                var senderSign;
     
-            });
-            connection.on("close", (reasonCode, description) => {
-                var index = users[id].indexOf(connection);
-                users[id].splice(index, 1);
-                if (users[id].length == 0) {
-                    delete users[id];
+                                txOuts = [{
+                                    pubKeyHash: addressWalletStore,
+                                    money: totalMoney,
+                                }, {
+                                    pubKeyHash: pubKeyHash,
+                                    money: totalInput - 1.01 * totalMoney
+                                }];
+                            
+                                tx = {
+                                    txIns: txIns,
+                                    txOuts: txOuts,
+                                    message: JSON.stringify({
+                                        idUser: id,
+                                        idCart: p2Rows[0].id
+                                    })
+                                }
+                            
+                                senderSign = {
+                                    message: JSON.stringify(tx),
+                                    pubKey: pubKey,
+                                    signature: key.sign(sha256(JSON.stringify(tx), { asBytes: true }))
+                                };
+                            
+                                tx.senderSign = senderSign;
+    
+                                connectionBlockChain.sendUTF(JSON.stringify({
+                                    header: 'tx',
+                                    tx: tx,
+                                }));
+                            });
+                        });
+                    }
                 }
             });
-            // connection.sendUTF(id);
+            connection.on("close", (reasonCode, description) => {
+                console.log('Client đóng kết nối');
+                delete users[id];
+            });
         } else {
             req.reject();
         }

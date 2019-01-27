@@ -19,7 +19,7 @@ exports.updateQuantity = (Book_Id, quantity) => {
 }
 
 exports.createOrder = (User_Id, Full_name, Address, Phone) => {
-	var sql = `INSERT INTO orders (user_id, fullname, address, phone, status, payStatus) VALUES (${User_Id}, '${Full_name}', '${Address}', '${Phone}', 'Chưa giao', 'Chưa thanh toán')`;
+	var sql = `INSERT INTO orders (user_id, fullname, address, phone, status, payStatus) VALUES (${User_Id}, '${Full_name}', '${Address}', '${Phone}', 'Chưa giao', 'Đang xử lý')`;
 	return db.save(sql);
 }
 
