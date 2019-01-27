@@ -80,7 +80,7 @@ function ConnectCoreBlockChain() {
                             var idUser = JSON.parse(data.message).idUser;
                             // Tim connection cua user
                             if (users[idUser]) {
-                                users[idUser].sendUTF('Đơn hàng mã số ' + idCart.toString() + 'của bạn đã thanh toán thành công');
+                                users[idUser].sendUTF('Đơn hàng mã số ' + idCart.toString() + ' của bạn đã thanh toán thành công');
                             }
                             // Updatedb trang thai don hang da thanh toan
                             if (idCart) {
@@ -154,16 +154,14 @@ wsServer.on("request", req => {
         if (req.httpRequest.session.user) {
             var connection = req.accept(null, req.origin);
             var id = req.httpRequest.session.user.id;
-            if (!users[id]) {
-                users[id] = [];
-            }
             users[id] = connection;
+
             connection.on("message", message => {
                 var data = JSON.parse(message.utf8Data).data;
 
                 if (data.pubKeyHash != sha256(ec.keyFromPrivate(data.privKey, 'hex').getPublic('hex'))) {
                     if (users[id]) {
-                        connection.sendUTF('Khóa bí mật hoặc địa chỉ không hợp lệ');
+                        users[id].sendUTF('Khóa bí mật hoặc địa chỉ không hợp lệ');
                     }
                 }
                 else {
@@ -187,12 +185,12 @@ wsServer.on("request", req => {
                     }
                     if (totalInput < totalMoney * 1.01) {
                         if (users[id]) {
-                            connection.sendUTF('Số dư của bạn không đủ');
+                            users[id].sendUTF('Số dư của bạn không đủ');
                         }
                     }
                     else {
                         if (users[id]) {
-                            connection.sendUTF('Giao dịch của bạn đã được gửi lên hệ thống, vui lòng chờ');
+                            users[id].sendUTF('Giao dịch của bạn đã được gửi lên hệ thống, vui lòng chờ');
                         }
                         var p1 = cartRepo.createOrder(id, data.fullname, data.address, data.telephone);
                         Promise.all([p1]).then(([p1Rows]) => {
@@ -257,11 +255,7 @@ wsServer.on("request", req => {
             });
             connection.on("close", (reasonCode, description) => {
                 console.log('Client đóng kết nối');
-                var index = users[id].indexOf(connection);
-                users[id].splice(index, 1);
-                if (users[id].length == 0) {
-                    delete users[id];
-                }
+                delete users[id];
             });
         } else {
             req.reject();
