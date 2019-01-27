@@ -32,10 +32,10 @@ function Check() {
 		}));
 	}
 	ws.onerror = function (evt) {
-		alert("L?i k?t n?i");
+		alert("Lỗi kết nối");
 	}
 	ws.onclose = function (evt) {
-		console.log("?� ?�ng k?t n?i");
+		console.log("Đã đóng kết nối");
 	}
 	ws.onmessage = function (evt) {
 		try {
