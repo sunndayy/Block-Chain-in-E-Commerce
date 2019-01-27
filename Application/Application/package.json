@@ -1,0 +1,14 @@
+{
+  "name": "application",
+  "version": "0.0.0",
+  "description": "Application",
+  "main": "app.js",
+  "author": {
+    "name": ""
+  },
+  "dependencies": {
+    "elliptic": "^6.4.1",
+    "sha256": "^0.2.0",
+    "websocket": "^1.0.28"
+  }
+}
