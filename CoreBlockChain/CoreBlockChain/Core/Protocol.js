@@ -625,9 +625,5 @@ function main() {
 		var connection = req.accept(null, req.origin);
 		new Node(connection);
 	});
-	process.on("SIGHUP", code => {
-		fs.writeFileSync(Const.nextBlockFile, JSON.stringify(nextBlock));
-		process.exit();
-	});
 }
 module.exports = main;

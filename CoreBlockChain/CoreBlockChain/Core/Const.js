@@ -6,7 +6,7 @@
 	consensusDuration: 2000,
 	blockDuration: 3000,
 	needPoint: 60000,
-	reward: 1,
+	reward: 1000,
 	systemPort: process.env.PORT || 1337,
 	dnsServer: "eblockchaindns.herokuapp.com/",
 	trustedPeers: ["eblockchain1.herokuapp.com",
