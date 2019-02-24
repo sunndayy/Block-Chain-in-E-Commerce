@@ -189,6 +189,9 @@ function AddBlock(newBlock, preBlock) {
 
 class Node {
 	constructor(connection) {
+		this.interval = setInterval(() => {
+			this.Write("Hello");
+		}, 20 * 60 * 1000);
 		this.connection = connection;
 		this.followees = [];
 		this.connection.on("error", err => {
@@ -206,6 +209,7 @@ class Node {
 			}
 		});
 		this.connection.on("close", () => {
+			clearInterval(this.interval);
 			if (this.pubKeyHash) {
 				if (nodes[this.pubKeyHash]) {
 					delete nodes[this.pubKeyHash];
@@ -614,11 +618,13 @@ function main() {
 			}, myBlockChain.GetTimeMustWait(myPubKeyHash));
 		}
 	});
-	ConnectDNSServer();
+	// ConnectDNSServer();
 	ConnectTrustedPeers();
 	var server = http.createServer((req, res) => {
+		res.end("Hello World");
 	});
 	server.listen(Const.systemPort, () => {
+		console.log("Dang lang nghe tren port " + Const.systemPort);
 	});
 	var wsServer = new WebSocketServer({ httpServer: server });
 	wsServer.on("request", req => {
